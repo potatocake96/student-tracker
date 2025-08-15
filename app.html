@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Student Progress Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+  <style>
+  :root{
+    --bg:#f7f7fb;
+    --card:#ffffff;
+    --ink:#2d2a2a;
+    --muted:#6d6a6a;
+    --line:#eceaf4;
+    --brand:#8bb8e8;
+    --brand-2:#7acbbd;
+    --accent:#f2c6a0;
+    --accent-2:#d2b8f0;
+    --danger:#e57373;
+    --radius:18px;
+    --shadow:0 10px 30px rgba(60,60,90,.08);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family: 'Source Serif 4', ui-serif, Georgia, 'Times New Roman', serif; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;}
+  a{color:#335; text-decoration:none}
+  .wrap{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+  header{position:sticky;top:0;z-index:10;background:rgba(247,247,251,.7);backdrop-filter:saturate(140%) blur(8px);border-bottom:1px solid var(--line)}
+  .bar{display:flex;align-items:center;gap:12px;padding:14px 16px}
+  .logo{font-weight:700;letter-spacing:.2px;display:flex;align-items:center;gap:10px}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--brand);box-shadow:0 0 0 8px rgba(139,184,232,.22)}
+  .spacer{flex:1}
+  .btn, select, input[type="text"], input[type="email"], input[type="password"]{
+    border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:#fff;color:var(--ink);
+    font:inherit;outline:none;transition:all .25s ease; box-shadow:none
+  }
+  .btn{cursor:pointer}
+  .btn.brand{background:linear-gradient(180deg,var(--brand),#6ea4dd);border-color:#6ea4dd;color:#fff}
+  .btn.brand:hover{transform:translateY(-1px); box-shadow:0 8px 20px rgba(110,164,221,.35)}
+  .btn.ghost{background:#fff;color:#334;border-color:var(--line)}
+  .btn.ghost:hover{background:#fafbff}
+  select:hover, input:hover{background:#fafbff}
+  select:focus, input:focus{box-shadow:0 0 0 3px rgba(139,184,232,.35)}
+  nav.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 16px 0}
+  nav.tabs button{padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;color:#334;transition:all .18s}
+  nav.tabs button:hover{background:#fafbff}
+  nav.tabs button.active{background:linear-gradient(180deg,var(--brand-2),#60bcae);color:#fff;border-color:#60bcae;box-shadow:0 6px 18px rgba(96,188,174,.35)}
+  .grid{display:grid;gap:16px}
+  @media (min-width:900px){.grid-2{grid-template-columns:1fr 1fr} .grid-3{grid-template-columns:1fr 1fr 1fr}}
+  table{width:100%;border-collapse:collapse}
+  th,td{border-bottom:1px solid var(--line);padding:10px;text-align:left;font-size:15px}
+  th{color:var(--muted);font-weight:600}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .muted{color:var(--muted)}
+  .list{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow:auto}
+  .pill{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);padding:10px;border-radius:12px;background:#fff}
+  .checkbox{transform:scale(1.12)}
+  footer{padding:24px 16px;color:var(--muted)}
+  select{
+    appearance:none; -webkit-appearance:none; -moz-appearance:none;
+    background-image:
+      linear-gradient(45deg, transparent 50%, #777 50%),
+      linear-gradient(135deg, #777 50%, transparent 50%),
+      linear-gradient(to right, transparent, transparent);
+    background-position:
+      calc(100% - 20px) calc(1.1em),
+      calc(100% - 15px) calc(1.1em),
+      100% 0;
+    background-size:5px 5px, 5px 5px, 2.5em 2.5em;
+    background-repeat:no-repeat;
+    padding-right:2.4em;
+  }
+  .fade-in{opacity:0; transform:translateY(6px); animation:fade .45s ease forwards}
+  @keyframes fade{to{opacity:1; transform:none}}
+  .slide-up{opacity:0; transform:translateY(10px); animation:slideup .5s ease forwards}
+  @keyframes slideup{to{opacity:1; transform:none}}
+
+    .kpi{display:flex;gap:12px;align-items:center}
+    .kpi .ring{width:10px;height:10px;border-radius:50%;background:var(--brand-2);box-shadow:0 0 0 8px rgba(122,203,189,.22)}
+    .progressbar{height:10px;background:#f1f5f9;border-radius:999px;overflow:hidden}
+    .progressbar > div{height:100%;background:linear-gradient(90deg,var(--brand-2),#90e0d0);width:0;transition:width .35s}
+    .hidden{display:none !important}
+  </style>
+</head>
+<body>
+<header class="fade-in">
+  <div class="bar">
+    <div class="logo"><span class="dot"></span> Student Progress Tracker</div>
+    <div class="spacer"></div>
+    <button id="signOutBtn" class="btn ghost">Sign out</button>
+  </div>
+</header>
+
+<main class="wrap fade-in">
+  <nav class="tabs slide-up">
+    <button data-tab="students" class="active">Students</button>
+    <button data-tab="assign">Assign</button>
+    <button data-tab="subjects">Subjects</button>
+    <button data-tab="marking">Marking</button>
+    <button data-tab="progress">View Progress</button>
+    <button data-tab="data">Data</button>
+  </nav>
+
+  <section id="tab-students" class="tab card slide-up">
+    <h2>Students</h2>
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>Add student</h3>
+        <div class="row">
+          <input id="studentName" type="text" placeholder="Full name" />
+          <input id="studentPref" type="text" placeholder="Preferred name (optional)" />
+          <button id="addStudentBtn" class="btn brand">Add</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Students</h3>
+        <div id="studentsList" class="list"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-assign" class="tab card hidden slide-up">
+    <h2>Assign students to subjects</h2>
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="row">
+          <select id="assignStudentSel"></select>
+          <button id="refreshAssignBtn" class="btn ghost">Refresh</button>
+        </div>
+        <div id="assignSubjects" class="list" style="margin-top:8px"></div>
+        <div class="row" style="margin-top:8px">
+          <button id="saveAssignBtn" class="btn brand">Save assignments</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Tips</h3>
+        <p class="muted">Choose a student, tick their subjects, then save.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-subjects" class="tab card hidden slide-up">
+    <div class="grid grid-2">
+      <div class="card">
+        <h2>Subjects</h2>
+        <div class="row">
+          <input id="subjectName" type="text" placeholder="New subject name" />
+          <button id="addSubjectBtn" class="btn brand">Add</button>
+        </div>
+        <div id="subjectsList" class="list" style="margin-top:8px"></div>
+      </div>
+      <div class="card">
+        <h2>Areas & Key Skills</h2>
+        <div class="row">
+          <select id="subjectSel"></select>
+          <input id="areaName" type="text" placeholder="New area of study" />
+          <button id="addAreaBtn" class="btn ghost">Add area</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <select id="areaSel"></select>
+          <input id="skillName" type="text" placeholder="New key skill" />
+          <button id="addSkillBtn" class="btn ghost">Add skill</button>
+        </div>
+        <div id="skillsList" class="list" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-marking" class="tab card hidden slide-up">
+    <h2>Marking</h2>
+    <div class="row">
+      <select id="mStudentSel"></select>
+      <select id="mSubjectSel"></select>
+      <select id="mAreaSel"></select>
+    </div>
+    <div id="markingTableWrap" class="card" style="margin-top:12px">
+      <table id="markingTable">
+        <thead><tr><th>Skill</th><th>Completed?</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="tab-progress" class="tab card hidden slide-up">
+    <h2>View Progress</h2>
+    <div class="row">
+      <select id="vStudentSel"></select>
+      <select id="vSubjectSel"></select>
+      <select id="vAreaSel"></select>
+    </div>
+    <div class="grid grid-2" style="margin-top:12px">
+      <div class="card">
+        <h3>Checklist</h3>
+        <table id="viewTable">
+          <thead><tr><th>Skill</th><th>Status</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Overall completion</h3>
+        <div class="kpi"><div class="ring"></div><div><span id="kpiPct">0%</span> complete</div></div>
+        <div class="progressbar" style="margin-top:10px"><div id="kpiBar"></div></div>
+        <p class="muted" style="margin-top:10px" id="kpiMeta">0 of 0 skills completed</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-data" class="tab card hidden slide-up">
+    <h2>Data</h2>
+    <div class="row">
+      <button id="exportBtn" class="btn ghost">Export JSON</button>
+      <input id="importFile" type="file" accept="application/json" />
+      <button id="importBtn" class="btn ghost">Import JSON</button>
+      <button id="dangerWipeBtn" class="btn ghost" style="border-color:#e57373;color:#b33939">Wipe my data</button>
+    </div>
+    <p class="muted">Your data is stored privately per account.</p>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div class="muted">© Student Progress Tracker</div>
+</footer>
+
+<script type="module">
+  const firebaseConfig = {
+    apiKey: "AIzaSyDyVOcyN6GG4Eyk2bglXzZlpRAqE5h_J_8",
+    authDomain: "tracker-project-3f3f5.firebaseapp.com",
+    projectId: "tracker-project-3f3f5",
+        appId: "1:997940286285:web:2e73d6113b74426acf5d04"
+  };
+
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+  import { getFirestore, doc, setDoc, getDoc, getDocs, addDoc, collection, deleteDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  const $ = (id) => document.getElementById(id);
+  function toast(msg) { console.log(msg); }
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = "index.html"; return; }
+    state.uid = user.uid;
+    await Promise.all([loadStudents(), loadSubjects()]);
+    renderTabs();
+    renderStudents();
+    renderAssign();
+    renderSubjects();
+    renderAreasAndSkills();
+    renderMarkingSelectors();
+    renderViewSelectors();
+  });
+
+  document.getElementById("signOutBtn").onclick = async () => { await signOut(auth); window.location.href = "index.html"; };
+
+  function showTab(name) {
+    document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab===name));
+    document.querySelectorAll('.tab').forEach(s => s.classList.add('hidden'));
+    document.getElementById("tab-" + name).classList.remove('hidden');
+  }
+  function renderTabs() {
+    document.querySelectorAll('nav.tabs button').forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
+    showTab('students');
+  }
+
+  const col = (...p) => collection(db, ...p);
+  const ref = (...p) => doc(db, ...p);
+  let state = { uid: null, students: [], subjects: [], areasBySubject: {}, skillsByArea: {}, enrolmentsByStudent: {} };
+
+  async function loadStudents() {
+    const snap = await getDocs(col('users', state.uid, 'students'));
+    state.students = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=> (a.name||'').localeCompare(b.name||''));
+  }
+  function renderStudents() {
+    const list = document.getElementById("studentsList"); list.innerHTML = "";
+    if (!state.students.length) list.append(el('div', {class:'muted'}, 'No students yet.'));
+    for (const s of state.students) {
+      const row = el('div', {class:'pill'}, el('div',{}, s.name + (s.preferredName?`  · “${s.preferredName}”`:"")), el('div',{}, 
+        el('button', {class:'btn ghost', 'data-id': s.id}, 'Delete')
+      ));
+      row.querySelector('button').onclick = async () => {
+        if (!confirm('Delete this student?')) return;
+        await deleteDoc(ref('users', state.uid, 'students', s.id));
+        await loadStudents(); renderStudents(); renderAssign(); renderMarkingSelectors(); renderViewSelectors();
+      };
+      list.append(row);
+    }
+  }
+  document.getElementById("addStudentBtn").onclick = async () => {
+    const name = document.getElementById("studentName").value.trim();
+    if (!name) return;
+    const preferred = document.getElementById("studentPref").value.trim();
+    await addDoc(col('users', state.uid, 'students'), { name, preferredName: preferred||null, createdAt: serverTimestamp() });
+    document.getElementById("studentName").value = ''; document.getElementById("studentPref").value='';
+    await loadStudents(); renderStudents(); renderAssign(); renderMarkingSelectors(); renderViewSelectors();
+  };
+
+  async function loadSubjects() {
+    const snap = await getDocs(col('users', state.uid, 'subjects'));
+    state.subjects = snap.docs.map(d=>({ id:d.id, ...d.data() })).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    state.areasBySubject = {}; state.skillsByArea = {}
+    for (const subj of state.subjects) {
+      const areasSnap = await getDocs(col('users', state.uid, 'subjects', subj.id, 'areas'));
+      const areas = areasSnap.docs.map(d=>({ id:d.id, ...d.data() })).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+      state.areasBySubject[subj.id] = areas;
+      for (const a of areas) {
+        const skillsSnap = await getDocs(col('users', state.uid, 'subjects', subj.id, 'areas', a.id, 'skills'));
+        const skills = skillsSnap.docs.map(d=>({ id:d.id, ...d.data() })).sort((x,y)=>(x.order??999)-(y.order??999));
+        state.skillsByArea[a.id] = skills;
+      }
+    }
+  }
+
+  function renderSubjects() {
+    const list = document.getElementById("subjectsList"); list.innerHTML = "";
+    if (!state.subjects.length) list.append(el('div', {class:'muted'}, 'No subjects yet — add one above.'));
+    for (const s of state.subjects) {
+      const row = el('div', {class:'pill'}, el('div',{}, s.name), el('div',{}, 
+        el('button', {class:'btn ghost', 'data-id': s.id}, 'Delete')
+      ));
+      row.querySelector('button').onclick = async () => {
+        if (!confirm('Delete this subject (and its areas/skills)?')) return;
+        await deleteDoc(ref('users', state.uid, 'subjects', s.id));
+        await loadSubjects(); renderSubjects(); renderAreasAndSkills(); renderAssign(); renderMarkingSelectors(); renderViewSelectors();
+      };
+      list.append(row);
+    }
+  }
+
+  function getSelections() { return { subjectId: document.getElementById("subjectSel").value || null, areaId: document.getElementById("areaSel").value || null }; }
+  function restoreSelections(sel) {
+    const subjectSel = document.getElementById("subjectSel");
+    const areaSel = document.getElementById("areaSel");
+    if (sel.subjectId) { const opt = [...subjectSel.options].find(o=>o.value===sel.subjectId); if (opt) subjectSel.value = sel.subjectId; }
+    subjectSel.dispatchEvent(new Event('change'));
+    if (sel.areaId) { const opt2 = [...areaSel.options].find(o=>o.value===sel.areaId); if (opt2) areaSel.value = sel.areaId; }
+    areaSel.dispatchEvent(new Event('change'));
+  }
+
+  const subjectSelEl = document.getElementById("subjectSel"), areaSelEl = document.getElementById("areaSel"), skillsList = document.getElementById("skillsList");
+  function renderAreasAndSkills() {
+    const prev = getSelections();
+    subjectSelEl.innerHTML = state.subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    if (state.subjects.length) { subjectSelEl.dispatchEvent(new Event('change')); restoreSelections(prev); }
+    else { areaSelEl.innerHTML=""; skillsList.innerHTML=""; }
+  }
+  subjectSelEl.onchange = () => {
+    const sid = subjectSelEl.value;
+    const areas = state.areasBySubject[sid] || [];
+    areaSelEl.innerHTML = areas.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+    areaSelEl.dispatchEvent(new Event('change'));
+  };
+  areaSelEl.onchange = () => {
+    const aid = areaSelEl.value;
+    const skills = state.skillsByArea[aid] || [];
+    renderSkillList(skills);
+  };
+
+  function renderSkillList(skills) {
+    skillsList.innerHTML = "";
+    if (!skills.length) return skillsList.append(el('div', {class:'muted'}, 'No skills yet. Add some.'));
+    for (const sk of skills) {
+      const row = el('div', {class:'pill'}, el('div',{}, (sk.order!=null?`#${sk.order} · `:"") + sk.name),
+        el('div',{}, el('button', {class:'btn ghost', 'data-id': sk.id}, 'Delete'))
+      );
+      row.querySelector('button').onclick = async () => {
+        if (!confirm('Delete this skill?')) return;
+        await deleteDoc(ref('users', state.uid, 'subjects', subjectSelEl.value, 'areas', areaSelEl.value, 'skills', sk.id));
+        await loadSubjects(); renderAreasAndSkills();
+      };
+      skillsList.append(row);
+    }
+  }
+
+  document.getElementById("addSubjectBtn").onclick = async () => {
+    const name = document.getElementById("subjectName").value.trim();
+    if (!name) return;
+    const docRef = await addDoc(col('users', state.uid, 'subjects'), { name, createdAt: serverTimestamp() });
+    document.getElementById("subjectName").value = '';
+    await loadSubjects(); renderSubjects(); renderAreasAndSkills(); renderAssign(); renderMarkingSelectors(); renderViewSelectors();
+    if (docRef?.id) { subjectSelEl.value = docRef.id; subjectSelEl.dispatchEvent(new Event('change')); }
+  };
+  document.getElementById("addAreaBtn").onclick = async () => {
+    const sid = subjectSelEl.value;
+    const name = document.getElementById("areaName").value.trim();
+    if (!sid || !name) return;
+    const aRef = await addDoc(col('users', state.uid, 'subjects', sid, 'areas'), { name });
+    document.getElementById("areaName").value='';
+    await loadSubjects(); renderAreasAndSkills();
+    subjectSelEl.value = sid; subjectSelEl.dispatchEvent(new Event('change'));
+    if (aRef?.id) { areaSelEl.value = aRef.id; areaSelEl.dispatchEvent(new Event('change')); }
+  };
+  document.getElementById("addSkillBtn").onclick = async () => {
+    const sid = subjectSelEl.value, aid = areaSelEl.value;
+    const name = document.getElementById("skillName").value.trim();
+    if (!sid || !aid || !name) return;
+    const order = (state.skillsByArea[aid]?.length || 0) + 1;
+    await addDoc(col('users', state.uid, 'subjects', sid, 'areas', aid, 'skills'), { name, order });
+    document.getElementById("skillName").value='';
+    await loadSubjects(); renderAreasAndSkills();
+    subjectSelEl.value = sid; subjectSelEl.dispatchEvent(new Event('change'));
+    areaSelEl.value = aid; areaSelEl.dispatchEvent(new Event('change'));
+  };
+
+  /* Assign */
+  const assignStudentSel = document.getElementById("assignStudentSel");
+  function renderAssign() {
+    assignStudentSel.innerHTML = state.students.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    assignStudentSel.dispatchEvent(new Event('change'));
+  }
+  document.getElementById("refreshAssignBtn").onclick = async () => { await loadEnrolments(assignStudentSel.value); renderAssignSubjects(assignStudentSel.value); };
+  assignStudentSel.onchange = async () => { await loadEnrolments(assignStudentSel.value); renderAssignSubjects(assignStudentSel.value); };
+
+  async function loadEnrolments(studentId) {
+    if (!studentId) return;
+    const snap = await getDocs(col('users', state.uid, 'students', studentId, 'subjects'));
+    const enrols = new Set(snap.docs.map(d=>d.id));
+    state.enrolmentsByStudent[studentId] = enrols;
+  }
+  function renderAssignSubjects(studentId) {
+    const box = document.getElementById("assignSubjects"); box.innerHTML="";
+    const enrols = state.enrolmentsByStudent[studentId] || new Set();
+    for (const subj of state.subjects) {
+      const row = el('label', {class:'pill'}, 
+        el('div',{}, subj.name),
+        el('input', {type:'checkbox', class:'checkbox', 'data-id': subj.id})
+      );
+      row.querySelector('input').checked = enrols.has(subj.id);
+      box.append(row);
+    }
+  }
+  document.getElementById("saveAssignBtn").onclick = async () => {
+    const studentId = assignStudentSel.value;
+    if (!studentId) return;
+    const checks = Array.from(document.querySelectorAll('#assignSubjects input[type="checkbox"]'));
+    const selected = checks.filter(c=>c.checked).map(c=>c.getAttribute('data-id'));
+    const existing = state.enrolmentsByStudent[studentId] || new Set();
+    for (const sid of Array.from(existing)) {
+      if (!selected.includes(sid)) await deleteDoc(ref('users', state.uid, 'students', studentId, 'subjects', sid));
+    }
+    for (const sid of selected) {
+      await setDoc(ref('users', state.uid, 'students', studentId, 'subjects', sid), { enrolled: true, updatedAt: serverTimestamp() });
+    }
+    await loadEnrolments(studentId);
+    renderAssignSubjects(studentId);
+  };
+
+  /* Marking */
+  const mStudentSel = document.getElementById("mStudentSel"), mSubjectSel = document.getElementById("mSubjectSel"), mAreaSel = document.getElementById("mAreaSel");
+  function renderMarkingSelectors() {
+    mStudentSel.innerHTML = state.students.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    mStudentSel.dispatchEvent(new Event('change'));
+  }
+  mStudentSel.onchange = async () => {
+    const sid = mStudentSel.value;
+    await loadEnrolments(sid);
+    const enrols = state.enrolmentsByStudent[sid] || new Set();
+    const subjects = state.subjects.filter(s=> enrols.has(s.id));
+    mSubjectSel.innerHTML = subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    mSubjectSel.dispatchEvent(new Event('change'));
+  };
+  mSubjectSel.onchange = () => {
+    const subjId = mSubjectSel.value;
+    const areas = state.areasBySubject[subjId] || [];
+    mAreaSel.innerHTML = areas.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+    mAreaSel.dispatchEvent(new Event('change'));
+  };
+  mAreaSel.onchange = async () => { await renderMarkingTable(); };
+
+  async function renderMarkingTable() {
+    const studentId = mStudentSel.value;
+    const subjectId = mSubjectSel.value;
+    const areaId = mAreaSel.value;
+    const tbody = document.querySelector('#markingTable tbody');
+    tbody.innerHTML = "";
+    const skills = state.skillsByArea[areaId] || [];
+    if (!skills.length) return tbody.append(el('tr',{}, el('td',{colspan:'2'}, 'No skills for this area.')));
+
+    for (const sk of skills) {
+      const pRef = ref('users', state.uid, 'progress', studentId, 'subjects', subjectId, 'skills', sk.id);
+      const snap = await getDoc(pRef);
+      const completed = !!(snap.exists() && snap.data().completed);
+      const tr = el('tr',{}, el('td',{}, sk.name), el('td',{}, (()=>{ 
+        const cb = el('input', {type:'checkbox', class:'checkbox'});
+        cb.checked = completed;
+        cb.onchange = async () => {
+          await setDoc(pRef, { completed: cb.checked, updatedAt: serverTimestamp() }, { merge: true });
+          if (document.getElementById("vStudentSel").value===studentId && document.getElementById("vSubjectSel").value===subjectId && document.getElementById("vAreaSel").value===areaId) { await renderViewTable(); }
+        };
+        return cb;
+      })()));
+      tbody.append(tr);
+    }
+  }
+
+  /* View Progress */
+  const vStudentSel = document.getElementById("vStudentSel"), vSubjectSel = document.getElementById("vSubjectSel"), vAreaSel = document.getElementById("vAreaSel");
+  function renderViewSelectors() {
+    vStudentSel.innerHTML = state.students.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    vStudentSel.dispatchEvent(new Event('change'));
+  }
+  vStudentSel.onchange = async () => {
+    const sid = vStudentSel.value;
+    await loadEnrolments(sid);
+    const enrols = state.enrolmentsByStudent[sid] || new Set();
+    const subjects = state.subjects.filter(s=> enrols.has(s.id));
+    vSubjectSel.innerHTML = subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    vSubjectSel.dispatchEvent(new Event('change'));
+  };
+  vSubjectSel.onchange = () => {
+    const subjId = vSubjectSel.value;
+    const areas = state.areasBySubject[subjId] || [];
+    vAreaSel.innerHTML = areas.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+    vAreaSel.dispatchEvent(new Event('change'));
+  };
+  vAreaSel.onchange = async () => { await renderViewTable(); };
+
+  async function renderViewTable() {
+    const studentId = vStudentSel.value;
+    const subjectId = vSubjectSel.value;
+    const areaId = vAreaSel.value;
+    const tbody = document.querySelector('#viewTable tbody');
+    const bar = document.getElementById('kpiBar'), pct = document.getElementById('kpiPct'), meta = document.getElementById('kpiMeta');
+    tbody.innerHTML = "";
+    const skills = state.skillsByArea[areaId] || [];
+    if (!skills.length) {
+      tbody.append(el('tr',{}, el('td',{colspan:'2'}, 'No skills for this area.')));
+      bar.style.width = '0%'; pct.textContent = '0%'; meta.textContent = '0 of 0 skills completed';
+      return;
+    }
+    let done = 0;
+    for (const sk of skills) {
+      const pRef = ref('users', state.uid, 'progress', studentId, 'subjects', subjectId, 'skills', sk.id);
+      const snap = await getDoc(pRef);
+      const completed = !!(snap.exists() && snap.data().completed);
+      if (completed) done++;
+      const tr = el('tr',{}, el('td',{}, sk.name), el('td',{}, completed ? '✓ Completed' : '—'));
+      tbody.append(tr);
+    }
+    const total = skills.length;
+    const pctNum = Math.round((done/total)*100);
+    bar.style.width = pctNum + '%';
+    pct.textContent = pctNum + '%';
+    meta.textContent = `${done} of ${total} skills completed`;
+  }
+
+  function el(tag, attrs = {}, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k,v] of Object.entries(attrs)) {
+      if (k==='class') n.className = v; else if(k==='html') n.innerHTML = v; else if(v!==undefined) n.setAttribute(k,v);
+    }
+    kids.forEach(k=> n.appendChild(typeof k==="string" ? document.createTextNode(k) : k));
+    return n;
+  }
+</script>
+</body>
+</html>
