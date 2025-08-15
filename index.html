@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>trackME — Sign in</title>
+  <style>
+  /* === trackME teal minimalist theme === */
+  :root{
+    --bg:#f7f8fa;
+    --surface:#ffffff;
+    --ink:#222222;
+    --muted:#5b6472;
+    --line:#e6e9ee;
+    --accent:#009688;    /* teal */
+    --accent-2:#00796b;  /* darker teal */
+    --accent-light:#4db6ac;
+    --danger:#e11d48;
+    --radius:16px;
+    --shadow:0 10px 30px rgba(0,0,0,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family: Georgia, 'Times New Roman', serif;
+    -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+  a{color:var(--accent);text-decoration:none}
+  .wrap{width:100%;max-width:min(1600px,96vw);margin:0 auto;
+    padding:clamp(10px,2.2vw,24px) clamp(8px,2vw,20px)}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+  header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.75);
+    backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid var(--line)}
+  .bar{display:flex;align-items:center;gap:14px;padding:12px 16px}
+  .brand{display:flex;align-items:center;gap:12px;font-weight:700;font-size:18px}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 8px rgba(0,150,136,.18)}
+  .brand small{font-weight:600;color:var(--muted);font-size:12px}
+  .spacer{flex:1}
+  .btn,select,input[type="text"],input[type="email"],input[type="password"]{
+    border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;color:var(--ink);
+    font:inherit;outline:none;transition:box-shadow .2s ease, transform .15s ease, background-color .2s ease}
+  .btn{cursor:pointer}
+  .btn.primary{background:linear-gradient(180deg,var(--accent),var(--accent-2));border-color:transparent;color:#fff}
+  .btn.primary:hover{transform:translateY(-1px)}
+  .btn.ghost{background:#fff;color:var(--ink)}
+  .btn.ghost:hover{background:#f2f4f7}
+  select:hover,input:hover{background:#f9fafb}
+  select:focus,input:focus{box-shadow:0 0 0 3px rgba(0,150,136,.22);border-color:var(--accent)}
+  h1{font-size:24px;margin:4px 0 8px;color:var(--accent)}
+  h2{font-size:18px;margin:0 0 8px;color:var(--accent)}
+  h3{font-size:16px;margin:0 0 8px;color:var(--muted)}
+  .grid{display:grid;gap:16px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .muted{color:var(--muted)}
+  .center{min-height:100svh;display:grid;place-items:center;padding:24px}
+  .fade-in{opacity:0;transform:translateY(6px);animation:fade .45s ease forwards}
+  @keyframes fade{to{opacity:1;transform:none}}
+  /* small phones (e.g., iPhone 12 mini) */
+  @media(max-width:380px){
+    .bar{padding:10px}
+    .brand{gap:8px;font-size:16px}
+    .card{padding:12px}
+    .btn,select,input{padding:10px 12px}
+  }
+  </style>
+</head>
+<body>
+  <main class="center fade-in">
+    <section class="card" style="width:min(520px,95vw)">
+      <div class="brand"><span class="dot"></span><span>trackME</span><small>copyright simon dass</small></div>
+      <h2>Sign in</h2>
+      <div class="grid">
+        <input id="email" type="email" placeholder="Email" autocomplete="username email" />
+        <input id="pass" type="password" placeholder="Password" autocomplete="current-password" />
+        <button id="login" class="btn primary">Sign in</button>
+        <div class="row">
+          <button id="create" class="btn ghost">Create account</button>
+          <button id="reset" class="btn ghost">Reset password</button>
+        </div>
+      </div>
+      <p id="msg" class="muted" style="margin-top:8px" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script type="module">
+    // Replace with your Firebase project config
+    const firebaseConfig = {
+    apiKey: "AIzaSyDyVOcyN6GG4Eyk2bglXzZlpRAqE5h_J_8",
+    authDomain: "tracker-project-3f3f5.firebaseapp.com",
+    projectId: "tracker-project-3f3f5",
+    appId: "1:997940286285:web:2e73d6113b74426acf5d04"
+  };
+
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    const $ = (id)=>document.getElementById(id);
+    const toast = (t)=>{ $("msg").textContent=t; setTimeout(()=>{ $("msg").textContent="" }, 3500); };
+
+    onAuthStateChanged(auth, (user)=>{ if(user) window.location.href="app.html"; });
+    $("login").onclick = async ()=>{ try { await signInWithEmailAndPassword(auth, $("email").value, $("pass").value); } catch(e){ toast(e.message); } };
+    $("create").onclick = async ()=>{ try { await createUserWithEmailAndPassword(auth, $("email").value, $("pass").value); } catch(e){ toast(e.message); } };
+    $("reset").onclick = async ()=>{ try { await sendPasswordResetEmail(auth, $("email").value); toast("Reset link sent (if account exists)."); } catch(e){ toast(e.message); } };
+  </script>
+</body>
+</html>
