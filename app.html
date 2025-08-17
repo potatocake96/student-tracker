@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>trackME</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#ffffff; --surface:#ffffff; --ink:#0a0a0a; --muted:#6b7280; --line:#e5e7eb;
+      --accent:#111111; --accent-2:#000000; --highlight:#ffd54a; --danger:#e11d48;
+      --radius:14px; --shadow:0 10px 34px rgba(0,0,0,.08);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-top: env(safe-area-inset-top, 0px);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;overflow-x:hidden}
+
+    .btn,select,input[type="text"],input[type="email"],input[type="password"]{
+      border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font:inherit;outline:none;transition:box-shadow .18s ease, transform .14s ease, background-color .18s ease, border-color .18s ease
+    }
+    .btn{cursor:pointer}
+    .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+    .btn.primary:hover{background:var(--accent-2);transform:translateY(-1px)}
+    .btn.ghost{background:#fff;color:var(--ink)}
+    .btn.ghost:hover{background:#f7f7f7}
+    .control-lg{padding:12px 14px}
+    .control-sm{padding:9px 12px;font-size:14px;border-radius:8px}
+    .btn-sm{padding:8px 12px;font-size:14px;border-radius:8px}
+    select:hover,input:hover{background:#fafafa}
+    select:focus,input:focus,.btn:focus{box-shadow:0 0 0 3px rgba(255,213,74,.45);border-color:var(--accent)}
+
+    .wrap{width:100%;max-width:min(1200px,94vw);margin:0 auto;padding:clamp(8px,2vw,20px)}
+    .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;letter-spacing:.2px;min-width:0}
+    .logo{width:22px;height:22px;display:inline-block}
+    .brand small{font-weight:600;color:var(--muted);font-size:12px;white-space:nowrap}
+    .spacer{flex:1}
+
+    /* ===== HEADER ===== */
+    header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.86);backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid var(--line)}
+    .bar{display:flex;align-items:center;gap:14px;padding:max(10px,var(--safe-top)) max(16px,var(--safe-right)) 10px max(16px,var(--safe-left))}
+    .bar .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+    .select-with-add{position:relative;min-width:220px;width:min(340px,46vw)}
+    .select-with-add select.has-addon{padding-right:42px;width:100%}
+    .select-with-add .btn-icon{
+      position:absolute;top:50%;right:6px;transform:translateY(-50%);
+      display:grid;place-items:center;width:28px;height:28px;padding:0;border:1px solid var(--line);border-radius:8px;background:#fff
+    }
+    .select-with-add .btn-icon:hover{background:#f7f7f7}
+    .btn-icon svg{width:16px;height:16px}
+
+    @media (max-width:520px){
+      .brand small{display:none}
+      .bar{display:grid;grid-template-columns:1fr auto;grid-template-areas:"brand out" "classes classes";row-gap:8px;column-gap:10px;padding:max(8px,var(--safe-top)) max(12px,var(--safe-right)) 10px max(12px,var(--safe-left))}
+      .brand{grid-area:brand;min-width:0;overflow:hidden;text-overflow:ellipsis}
+      .bar .row.compact{grid-area:classes}
+      #signOutBtn{grid-area:out;justify-self:end}
+      .select-with-add{width:100%}
+    }
+
+    h2{font-size:18px;margin:0 0 8px;color:var(--accent)}
+    h3{font-size:15px;margin:0 0 8px;color:var(--muted);font-weight:600}
+
+    /* Tabs (desktop) */
+    nav.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;padding-left:max(0px,var(--safe-left));padding-right:max(0px,var(--safe-right))}
+    nav.tabs button{padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);font-weight:600;white-space:nowrap}
+    nav.tabs button.active{color:#fff;background:var(--accent);border-color:var(--accent)}
+    nav.tabs button:focus{outline:none;box-shadow:0 0 0 3px rgba(255,213,74,.45)}
+
+    /* Mobile nav (dropdown) */
+    .nav-select{display:none;margin:6px 0 14px;width:100%}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    @media (max-width:640px){
+      nav.tabs{display:none}
+      .nav-select{display:block}
+    }
+
+    table{width:100%;border-collapse:collapse}
+    th,td{border-bottom:1px solid var(--line);padding:10px 8px;text-align:left;font-size:14.5px}
+    th{color:var(--muted);font-weight:700;letter-spacing:.2px}
+    .list{display:flex;flex-direction:column;gap:8px;max-height:380px;overflow:auto}
+    .pill{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);padding:8px 10px;border-radius:10px;background:#fff}
+
+    .toolbar{display:grid;gap:8px}
+    .toolbar.cols-3{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+    .toolbar.cols-2{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+    .toolbar select,.toolbar input,.toolbar .btn{width:100%;max-width:260px;justify-self:start}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .row.compact > *{flex:0 0 auto;max-width:260px}
+    @media(max-width:420px){ .card{padding:14px} .toolbar select,.toolbar input,.toolbar .btn{max-width:100%} }
+
+    .progressbar{height:12px;background:#f1f1f1;border-radius:999px;overflow:hidden;border:1px solid var(--line)}
+    .barFill{height:100%;background:linear-gradient(90deg,var(--highlight),#ffb300);width:0;transition:width .35s}
+
+    .alog .box,.alog .check{fill:none;stroke:#111;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:100;stroke-dashoffset:100}
+    .alog .box{animation:boxDraw .7s ease-out forwards}
+    .alog .check{animation:checkDraw .65s .4s ease-out forwards}
+    .alog .dot{fill:var(--highlight);transform-box:fill-box;transform-origin:center;opacity:0;animation:dotPop .36s .8s cubic-bezier(.2,.9,.2,1.3) forwards, dotPulse 2.2s 1.2s ease-in-out infinite}
+    @keyframes boxDraw{to{stroke-dashoffset:0}} @keyframes checkDraw{to{stroke-dashoffset:0}}
+    @keyframes dotPop{0%{opacity:0;transform:scale(.4)}60%{opacity:1;transform:scale(1.15)}100%{opacity:1;transform:scale(1)}}
+    @keyframes dotPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+    @media (prefers-reduced-motion: reduce){ .alog .box,.alog .check{animation:none;stroke-dashoffset:0}.alog .dot{animation:none;opacity:1;transform:none} }
+
+    .hidden{display:none !important}
+    .admin-only.hidden{display:none !important}
+    .muted{color:var(--muted)}
+    .desktop-only{display:none}
+    @media (min-width:900px){ .desktop-only{display:block} }
+
+    /* ===== Scan (Quick Scan – no live preview) ===== */
+    .scan-grid{display:grid;gap:10px;grid-template-columns:1fr}
+    @media (min-width:820px){ .scan-grid{grid-template-columns:1fr 1fr} }
+    .scan-controls{display:grid;gap:10px}
+    .scan-controls .row{display:grid;gap:8px;grid-template-columns:1fr 1fr}
+    .scan-controls label{font-size:12px;color:#6b7280}
+    .scan-actions{display:flex;gap:10px;flex-wrap:wrap}
+    .scan-note{font-size:12px;color:#6b7280}
+
+    /* Image preview adapts to any aspect ratio (no letterboxes) */
+    .stillWrap{
+      display:inline-grid;grid-template-areas:'stack';
+      border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);background:#fff;max-width:100%;
+    }
+    #scanStill{grid-area:stack;display:block;max-width:100%;max-height:65vh;width:auto;height:auto}
+    .scanOverlay{grid-area:stack;pointer-events:none;opacity:0;transition:opacity .15s ease}
+    .scanOverlay.active{opacity:1}
+    .scanOverlay::before{
+      content:"";position:relative;display:block;width:100%;height:100%;
+      background:linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,213,74,.25) 50%, rgba(255,255,255,0) 100%);
+      transform:translateX(-100%);animation:scanSweep 1.25s linear infinite;
+    }
+    @keyframes scanSweep{to{transform:translateX(100%)}}
+
+    .scan-results{margin-top:10px;display:grid;gap:12px}
+    .scan-group{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+    .scan-group header{display:flex;align-items:center;gap:10px;justify-content:space-between;background:#fafafa;border-bottom:1px solid var(--line);padding:10px 12px}
+    .scan-group header h3{margin:0;color:var(--ink)}
+    .scan-table{width:100%;border-collapse:separate;border-spacing:0}
+    .scan-table th,.scan-table td{padding:10px;border-bottom:1px solid var(--line)}
+    .scan-table th{background:#fff;text-align:left;font-weight:600;font-size:13px}
+    .scan-table tr:last-child td{border-bottom:none}
+
+    .badge{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);padding:6px 8px;border-radius:999px;font-size:12px;background:#fff}
+    .badge .dot{width:8px;height:8px;border-radius:50%;background:var(--highlight)}
+
+    /* ===== Mobile polish (≤640px) ===== */
+    @media (max-width: 640px){
+      html, body { font-size: 16px; line-height: 1.35; }
+      h2 { font-size: 16.5px; margin: 0 0 6px; letter-spacing: .1px; }
+      h3 { font-size: 14px; margin: 0 0 6px; color: #4b5563; font-weight: 600; }
+
+      .wrap { padding: 12px; }
+      .card { padding: 12px; border-radius: 12px; }
+      header .bar {
+        gap: 10px;
+        padding: max(8px, var(--safe-top)) max(12px, var(--safe-right)) 8px max(12px, var(--safe-left));
+      }
+
+      .brand { font-size: 16px; gap: 8px; }
+      .logo { width: 20px; height: 20px; }
+      .brand small { display: none; }
+
+      .control-sm,
+      .btn-sm,
+      .nav-select,
+      .select-with-add select {
+        height: 40px;
+        padding: 8px 10px;
+        font-size: 16px;     /* prevents iOS zoom */
+        border-radius: 9px;
+      }
+      .btn-sm { padding: 8px 12px; }
+      .btn-icon { width: 30px; height: 30px; }
+      .select-with-add { min-width: 0; width: 100%; }
+      .select-with-add .btn-icon { right: 4px; }
+
+      .btn, select, input { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+
+      .toolbar { gap: 6px; }
+      .toolbar.cols-3 { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+      .toolbar.cols-2 { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+      .row.compact > * { max-width: 100%; flex: 1 1 auto; }
+
+      .list { gap: 6px; max-height: 55vh; }
+      .pill { padding: 8px 10px; border-radius: 10px; }
+
+      table th, table td { padding: 8px 6px; font-size: 14px; }
+
+      nav.tabs { display: none; }
+      .nav-select { display: block; margin: 8px 0 10px; width: 100%; }
+
+      .scan-grid { grid-template-columns: 1fr; gap: 10px; }
+      #scanStill { max-height: 50vh; }
+      .scan-actions .btn { flex: 1; }
+      .scan-note { font-size: 12px; }
+
+      .progressbar { height: 10px; }
+    }
+
+    /* Extra tiny devices */
+    @media (max-width: 380px){
+      .control-sm, .btn-sm, .nav-select { height: 38px; }
+      table th, table td { font-size: 13.5px; }
+      /* ✅ FIX: Adjust scan buttons on small screens to prevent text overflow */
+      .scan-actions .btn {
+        font-size: 13px;
+        padding-left: 6px;
+        padding-right: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="bar">
+      <div class="brand">
+        <svg class="logo alog" viewBox="0 0 64 64" aria-label="trackME logo">
+          <rect class="box" x="6" y="6" width="52" height="52" rx="12" pathLength="100"/>
+          <path class="check" d="M20 34 l8 8 l16 -20" pathLength="100"/>
+          <circle class="dot" cx="50" cy="14" r="5"/>
+        </svg>
+        <span>trackME</span><small>assess effortlessly</small>
+      </div>
+
+      <div class="row compact">
+        <div class="select-with-add">
+          <select id="classSel" class="control-sm has-addon"></select>
+          <button id="addClassBtn" class="btn-icon" type="button" title="New class" aria-label="New class">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <button id="signOutBtn" class="btn btn-sm ghost">Sign out</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="tabs">
+    <button data-tab="students" class="active">Students</button>
+    <button data-tab="assign">Assign</button>
+    <button data-tab="subjects">Subjects</button>
+    <button data-tab="marking">Marking</button>
+    <button data-tab="scan">Scan</button>
+    <button data-tab="progress">View Progress</button>
+    <button data-tab="allprogress">All Subjects Progress</button>
+    <button data-tab="classes">Classes</button>
+    <button data-tab="data">Data</button>
+  </nav>
+
+  <label for="tabSelect" class="sr-only">menu</label>
+  <select id="tabSelect" class="control-sm nav-select">
+    <option value="students">Students</option>
+    <option value="assign">Assign</option>
+    <option value="subjects">Subjects</option>
+    <option value="marking">Marking</option>
+    <option value="scan">Scan</option>
+    <option value="progress">View Progress</option>
+    <option value="allprogress">All Subjects Progress</option>
+    <option value="classes">Classes</option>
+    <option value="data">Data</option>
+  </select>
+
+  <section id="tab-students" class="tab card">
+    <h2>Students</h2>
+    <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">
+      <div class="card">
+        <h3>Add student</h3>
+        <div class="toolbar cols-3">
+          <input id="studentName" class="control-sm" type="text" placeholder="Full name" />
+          <input id="studentPref" class="control-sm" type="text" placeholder="Preferred name (optional)" />
+          <select id="studentClassSel" class="control-sm"></select>
+          <button id="addStudentBtn" class="btn btn-sm primary">Add</button>
+        </div>
+        <p class="muted">Students are scoped to the selected class. Change class in the header.</p>
+      </div>
+      <div class="card">
+        <h3>Students in class</h3>
+        <div id="studentsList" class="list"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-assign" class="tab card hidden">
+    <h2>Assign students to subjects</h2>
+    <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">
+      <div class="card">
+        <div class="toolbar cols-2">
+          <select id="assignStudentSel" class="control-sm"></select>
+          <button id="refreshAssignBtn" class="btn btn-sm ghost">Refresh</button>
+        </div>
+        <div class="toolbar cols-2" style="margin-top:6px">
+          <input id="assignSearch" class="control-sm" type="text" placeholder="Search subjects" />
+          <button id="assignSearchClear" class="btn btn-sm ghost" type="button">Clear</button>
+        </div>
+        <div id="assignSubjects" class="list" style="margin-top:8px"></div>
+        <div class="row" style="margin-top:8px">
+          <button id="saveAssignBtn" class="btn btn-sm primary">Save assignments</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Notes</h3>
+        <p class="muted">Use the search above to quickly find catalog subjects. Tick to enrol; untick to remove. Student list respects the current class.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-subjects" class="tab card hidden">
+    <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">
+      <div class="card">
+        <h2>Subject catalog</h2>
+        <div class="row compact admin-only" id="adminAddSubject">
+          <input id="subjectName" class="control-sm" type="text" placeholder="New subject name" />
+          <button id="addSubjectBtn" class="btn btn-sm primary">Add</button>
+        </div>
+        <div class="row compact" style="margin-top:6px">
+          <input id="subjectSearch" class="control-sm" type="text" placeholder="Search subjects" />
+          <button id="subjectSearchClear" class="btn btn-sm ghost" type="button">Clear</button>
+        </div>
+        <div id="subjectsList" class="list" style="margin-top:8px"></div>
+        <p class="muted" id="subjectsInfo"></p>
+      </div>
+      <div class="card">
+        <h2>Areas & key skills</h2>
+        <div class="toolbar cols-3">
+          <select id="subjectSel" class="control-sm"></select>
+          <input id="areaName" class="control-sm admin-only" type="text" placeholder="New area of study" />
+          <button id="addAreaBtn" class="btn btn-sm ghost admin-only">Add area</button>
+        </div>
+        <div class="toolbar cols-3" style="margin-top:8px">
+          <select id="areaSel" class="control-sm"></select>
+          <input id="skillName" class="control-sm admin-only" type="text" placeholder="New key skill" />
+          <button id="addSkillBtn" class="btn btn-sm ghost admin-only">Add skill</button>
+        </div>
+        <div id="skillsList" class="list" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-marking" class="tab card hidden">
+    <h2>Marking</h2>
+    <div class="toolbar cols-3">
+      <select id="mStudentSel" class="control-sm"></select>
+      <select id="mSubjectSel" class="control-sm"></select>
+      <select id="mAreaSel" class="control-sm"></select>
+    </div>
+    <div id="markingTableWrap" class="card" style="margin-top:12px">
+      <table id="markingTable">
+        <thead><tr><th>Skill</th><th style="width:120px">Completed?</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="tab-scan" class="tab card hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
+      <h2 style="margin:0">Scan worksheet</h2>
+      <span class="badge"><span class="dot"></span> on-device OCR</span>
+    </div>
+    <p class="muted desktop-only" style="margin:0 0 8px">This page is optimised for mobile use — open on your phone for the fastest Quick Scan.</p>
+
+    <div class="scan-grid">
+      <div>
+        <div id="stillWrap" class="stillWrap hidden">
+          <img id="scanStill" alt="capture preview" />
+          <div class="scanOverlay" id="scanOverlay"></div>
+        </div>
+
+        <div class="scan-actions" style="margin-top:8px">
+          <button class="btn btn-sm primary" id="quickScanBtn" type="button">Quick Scan</button>
+          <button class="btn btn-sm" id="pickFromLibraryBtn" type="button">Upload Photo</button>
+          <button class="btn btn-sm ghost" id="retakeBtn" type="button" disabled>Retake</button>
+        </div>
+
+        <input id="cameraInput" type="file" accept="image/*" capture="environment" class="hidden" />
+        <input id="libraryInput" type="file" accept="image/*" class="hidden" />
+
+        <div id="scanProgress" style="margin-top:8px">
+          <div class="progressbar" aria-hidden="true"><div id="scanBar" class="barFill" style="width:0%"></div></div>
+        </div>
+
+        <div class="scan-note" style="margin-top:6px">
+          Tip: fill the frame with the outcomes section; keep the phone parallel to the page.
+        </div>
+      </div>
+
+      <div>
+        <div class="scan-controls">
+          <div class="row">
+            <div>
+              <label for="scanStudentSel">student</label>
+              <select id="scanStudentSel"></select>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <div class="muted">Subjects are detected automatically after scanning.</div>
+            </div>
+          </div>
+          <div id="scanMatchesNote" class="muted" style="display:none"></div>
+        </div>
+
+        <div id="scanResults" class="scan-results"></div>
+      </div>
+    </div>
+
+    <canvas id="scanCanvas" width="0" height="0" style="display:none"></canvas>
+    <canvas id="scanCanvasClean" width="0" height="0" style="display:none"></canvas>
+  </section>
+  <section id="tab-progress" class="tab card hidden">
+    <h2>View progress</h2>
+    <div class="toolbar cols-3">
+      <select id="vStudentSel" class="control-sm"></select>
+      <select id="vSubjectSel" class="control-sm"></select>
+      <select id="vAreaSel" class="control-sm"></select>
+    </div>
+    <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:12px">
+      <div class="card">
+        <h3>Checklist</h3>
+        <table id="viewTable">
+          <thead><tr><th>Skill</th><th style="width:130px">Status</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Overall completion</h3>
+        <div class="row" style="align-items:center;gap:10px">
+          <svg class="logo alog" viewBox="0 0 64 64" aria-hidden="true">
+            <rect class="box" x="6" y="6" width="52" height="52" rx="12" pathLength="100"/>
+            <path class="check" d="M20 34 l8 8 l16 -20" pathLength="100"/>
+            <circle class="dot" cx="50" cy="14" r="5"/>
+          </svg>
+          <div><span id="kpiPct">0%</span> complete</div>
+        </div>
+        <div class="card" style="margin-top:10px;background:#fff;border-color:var(--line)">
+          <div class="progressbar">
+            <div id="kpiBar" class="barFill"></div>
+          </div>
+          <p class="muted" style="margin-top:10px" id="kpiMeta">0 of 0 skills completed</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-allprogress" class="tab card hidden">
+    <h2>All subjects progress</h2>
+    <div class="toolbar cols-2">
+      <select id="apStudentSel" class="control-sm"></select>
+      <button id="apRefreshBtn" class="btn btn-sm ghost">Refresh</button>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <table id="apTable">
+        <thead><tr><th>Subject</th><th>Completed</th><th style="width:160px">Progress</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="tab-classes" class="tab card hidden">
+    <h2>Classes</h2>
+    <div class="toolbar cols-2">
+      <input id="className" class="control-sm" type="text" placeholder="New class name" />
+      <button id="createClassBtn" class="btn btn-sm primary">Create class</button>
+    </div>
+    <div id="classesList" class="list" style="margin-top:10px"></div>
+    <p class="muted">Select the active class from the header. All student dropdowns will filter to that class.</p>
+  </section>
+
+  <section id="tab-data" class="tab card hidden">
+    <h2>Data</h2>
+    <div class="row compact">
+      <button id="exportAllBtn" class="btn btn-sm ghost">Export All Data (JSON)</button>
+      <button id="exportClassBtn" class="btn btn-sm ghost">Export Current Class (JSON)</button>
+      <input id="importFile" class="control-sm" type="file" accept="application/json" />
+      <button id="importBtn" class="btn btn-sm ghost admin-only">Import catalog JSON (admin)</button>
+    </div>
+    <p class="muted">Students & progress are private per account. Subjects come from a global catalog (read-only unless you're admin).</p>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div class="muted"></div>
+</footer>
+
+<script type="module">
+  /* ==================== Firebase init ==================== */
+  const firebaseConfig = {
+    apiKey: "AIzaSyDyVOcyN6GG4Eyk2bglXzZlpRAqE5h_J_8",
+    authDomain: "tracker-project-3f3f5.firebaseapp.com",
+    projectId: "tracker-project-3f3f5",
+    appId: "1:997940286285:web:2e73d6113b74426acf5d04"
+  };
+  const ADMIN_EMAIL = "simon.dass.1996@gmail.com";
+  const ADMIN_UID = "agOwj4x61VNsOwJMmUz75hGiMw23";
+
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+  import { getFirestore, doc, setDoc, getDoc, getDocs, addDoc, collection, deleteDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  /* ==================== Utilities & layout ==================== */
+  const $ = (id) => document.getElementById(id);
+  const col = (...p) => collection(db, ...p);
+  const ref = (...p) => doc(db, ...p);
+
+  function el(tag, attrs = {}, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k,v] of Object.entries(attrs)) {
+      if (k==='class') n.className = v;
+      else if(k==='html') n.innerHTML = v;
+      else if(v!==undefined) n.setAttribute(k,v);
+    }
+    kids.forEach(k=> n.appendChild(typeof k==="string" ? document.createTextNode(k) : k));
+    return n;
+  }
+
+  // Sync buttons & mobile dropdown
+  const tabSelect = $('tabSelect');
+  function showTab(name) {
+    document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab===name));
+    document.querySelectorAll('.tab').forEach(s => s.classList.add('hidden'));
+    document.getElementById("tab-" + name).classList.remove('hidden');
+    if (tabSelect && tabSelect.value !== name) tabSelect.value = name;
+    if (name === 'scan') prewarmOCR();
+  }
+  function renderTabs() {
+    document.querySelectorAll('nav.tabs button').forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
+    if (tabSelect) tabSelect.addEventListener('change', () => showTab(tabSelect.value));
+    showTab('students');
+  }
+
+  document.getElementById("signOutBtn").onclick = async () => { await signOut(auth); window.location.href = "login.html"; };
+  document.getElementById("addClassBtn").onclick = () => { document.querySelector('[data-tab="classes"]').click(); setTimeout(()=>$('className').focus(), 50); };
+
+  let state = {
+    uid: null, isAdmin:false,
+    classes: [], currentClassId: 'ALL',
+    students: [], subjects: [],
+    areasBySubject: {}, skillsByArea: {},
+    enrolmentsByStudent: {},
+    outcomeIndex: [] // {subjectId,subjectName,areaId,areaName,skillId,textNorm,text}
+  };
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = "login.html"; return; }
+    state.uid = user.uid;
+    state.isAdmin = (user.email === ADMIN_EMAIL) || (ADMIN_UID && user.uid === ADMIN_UID);
+    document.querySelectorAll('.admin-only').forEach(elm => state.isAdmin ? elm.classList.remove('hidden') : elm.classList.add('hidden'));
+    const info = document.getElementById("subjectsInfo");
+    if (info) info.textContent = state.isAdmin ? "You are admin: you can create and edit the global catalog." : "Read-only: ask the admin to add or edit subject data.";
+
+    await Promise.all([loadClasses(), loadStudents(), loadCatalog()]);
+    ensureClassSelection();
+    renderTabs();
+    renderHeaderClass();
+    renderStudents();
+    renderAssign();
+    renderSubjects();
+    renderAreasAndSkills();
+    renderMarkingSelectors();
+    renderViewSelectors();
+    renderAllProgressSelectors();
+    renderClassesTab();
+    bindSearchBars();
+
+    // Scan init
+    renderScanSelectors();
+  });
+
+  /* ==================== Classes ==================== */
+  async function loadClasses() {
+    const snap = await getDocs(col('users', state.uid, 'classes'));
+    state.classes = snap.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b)=> (a.name||'').localeCompare(b.name||''));
+  }
+  function ensureClassSelection() {
+    if (!state.classes.length) { state.currentClassId = 'ALL'; return; }
+    if (state.currentClassId === 'ALL' || !state.classes.find(c=>c.id===state.currentClassId)) {
+      state.currentClassId = state.classes[0].id;
+    }
+  }
+  function renderHeaderClass() {
+    const sel = $('classSel');
+    const opts = ['<option value="ALL">All classes</option>'].concat(state.classes.map(c=>`<option value="${c.id}">${c.name}</option>`)).join('');
+    sel.innerHTML = opts;
+    sel.value = state.currentClassId || 'ALL';
+    const studentClassSel = $('studentClassSel');
+    studentClassSel.innerHTML = state.classes.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    if (state.currentClassId !== 'ALL') studentClassSel.value = state.currentClassId;
+    sel.onchange = () => { state.currentClassId = sel.value; refreshAllStudentScopedUI(); renderScanSelectors(); };
+  }
+  async function createClass(name) {
+    if (!name) return;
+    await addDoc(col('users', state.uid, 'classes'), { name, createdAt: serverTimestamp() });
+    await loadClasses();
+    ensureClassSelection(); renderHeaderClass(); refreshAllStudentScopedUI(); renderClassesTab(); renderScanSelectors();
+  }
+  function renderClassesTab() {
+    const list = $('classesList'); list.innerHTML='';
+    if (!state.classes.length) { list.append(el('div', {class:'muted'}, 'No classes yet. Create one above.')); return; }
+    for (const c of state.classes) {
+      const row = el('div', {class:'pill'}, el('div',{}, c.name), el('div',{}, el('button', {class:'btn btn-sm ghost','data-id': c.id}, 'Delete')));
+      row.querySelector('button').onclick = async () => {
+        if (!confirm('Delete this class?')) return;
+        await deleteDoc(ref('users', state.uid, 'classes', c.id));
+        await loadClasses(); ensureClassSelection(); renderHeaderClass(); refreshAllStudentScopedUI(); renderClassesTab(); renderScanSelectors();
+      };
+      list.append(row);
+    }
+  }
+  $('createClassBtn').onclick = () => createClass($('className').value.trim());
+
+  /* ==================== Students ==================== */
+  function filteredStudents() {
+    return state.currentClassId === 'ALL' ? state.students : state.students.filter(s=>s.classId === state.currentClassId);
+  }
+  async function loadStudents() {
+    const snap = await getDocs(col('users', state.uid, 'students'));
+    state.students = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=> (a.name||'').localeCompare(b.name||''));
+  }
+  function renderStudents() {
+    const list = $('studentsList'); list.innerHTML = "";
+    const arr = filteredStudents();
+    if (!arr.length) list.append(el('div', {class:'muted'}, 'No students in this class.'));
+    for (const s of arr) {
+      const cls = state.classes.find(c=>c.id===s.classId);
+      const className = cls ? cls.name : '(no class)';
+      const row = el('div', {class:'pill'},
+        el('div',{}, `${s.name} · ${className}`),
+        el('div',{}, el('button', {class:'btn btn-sm ghost','data-id': s.id}, 'Delete'))
+      );
+      row.querySelector('button').onclick = async () => {
+        if (!confirm('Delete this student?')) return;
+        await deleteDoc(ref('users', state.uid, 'students', s.id));
+        await loadStudents(); refreshAllStudentScopedUI(); renderScanSelectors();
+      };
+      list.append(row);
+    }
+  }
+  $('addStudentBtn').onclick = async () => {
+    const name = $('studentName').value.trim(); if (!name) return;
+    const preferred = $('studentPref').value.trim();
+    const classId = $('studentClassSel').value || (state.currentClassId !== 'ALL' ? state.currentClassId : null);
+    await addDoc(col('users', state.uid, 'students'), { name, preferredName: preferred||null, classId: classId, createdAt: serverTimestamp() });
+    $('studentName').value = ''; $('studentPref').value='';
+    await loadStudents(); refreshAllStudentScopedUI(); renderScanSelectors();
+  };
+
+  function refreshAllStudentScopedUI() {
+    renderStudents(); renderAssign(); renderMarkingSelectors(); renderViewSelectors(); renderAllProgressSelectors();
+  }
+
+  /* ==================== Global Catalog ==================== */
+  async function loadCatalog() {
+    const subjectsSnap = await getDocs(col('catalog', 'global', 'subjects'));
+    state.subjects = subjectsSnap.docs.map(d=>({ id:d.id, ...d.data() })).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    state.areasBySubject = {}; state.skillsByArea = {};
+    for (const subj of state.subjects) {
+      const areasSnap = await getDocs(col('catalog', 'global', 'subjects', subj.id, 'areas'));
+      const areas = areasSnap.docs.map(d=>({ id:d.id, ...d.data() })).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+      state.areasBySubject[subj.id] = areas;
+      for (const a of areas) {
+        const skillsSnap = await getDocs(col('catalog', 'global', 'subjects', subj.id, 'areas', a.id, 'skills'));
+        const skills = skillsSnap.docs.map(d=>({ id:d.id, ...d.data() })).sort((x,y)=>(x.order??999)-(y.order??999));
+        state.skillsByArea[a.id] = skills;
+      }
+    }
+    buildOutcomeIndex();
+  }
+  function buildOutcomeIndex(){
+    const res = [];
+    for (const subj of state.subjects){
+      const areas = state.areasBySubject[subj.id] || [];
+      for (const a of areas){
+        const skills = state.skillsByArea[a.id] || [];
+        for (const sk of skills){
+          res.push({
+            subjectId: subj.id, subjectName: subj.name,
+            areaId: a.id, areaName: a.name,
+            skillId: sk.id, text: sk.name, textNorm: normalize(sk.name)
+          });
+        }
+      }
+    }
+    state.outcomeIndex = res;
+  }
+  async function adminAddSubject(name) { if (!state.isAdmin) return alert('Admin only'); return await addDoc(col('catalog', 'global', 'subjects'), { name, createdAt: serverTimestamp() }); }
+  async function adminDelSubject(id) { if (!state.isAdmin) return alert('Admin only'); await deleteDoc(ref('catalog', 'global', 'subjects', id)); }
+  async function adminAddArea(subjectId, name) { if (!state.isAdmin) return alert('Admin only'); return await addDoc(col('catalog', 'global', 'subjects', subjectId, 'areas'), { name }); }
+  async function adminAddSkill(subjectId, areaId, name, order) { if (!state.isAdmin) return alert('Admin only'); return await addDoc(col('catalog', 'global', 'subjects', subjectId, 'areas', areaId, 'skills'), { name, order }); }
+  async function adminDelSkill(subjectId, areaId, skillId) { if (!state.isAdmin) return alert('Admin only'); await deleteDoc(ref('catalog', 'global', 'subjects', subjectId, 'areas', areaId, 'skills', skillId)); }
+
+  /* Subject search UI (other tabs) */
+  function getSubjectSearchQuery(){ return ($('subjectSearch')?.value || '').trim().toLowerCase(); }
+  function getFilteredSubjects(){
+    const q = getSubjectSearchQuery();
+    if (!q) return state.subjects;
+    return state.subjects.filter(s => (s.name||'').toLowerCase().includes(q));
+  }
+  function bindSearchBars(){
+    const ss = $('subjectSearch'), sc = $('subjectSearchClear');
+    if (ss){
+      ss.addEventListener('input', () => { renderSubjects(); renderAreasAndSkills(); });
+      ss.addEventListener('keydown', (e)=> { if (e.key === 'Escape') { ss.value=''; ss.dispatchEvent(new Event('input')); } });
+    }
+    if (sc){ sc.onclick = () => { if (ss){ ss.value=''; ss.dispatchEvent(new Event('input')); } }; }
+
+    const as = $('assignSearch'), ac = $('assignSearchClear');
+    if (as){
+      const trigger = () => { renderAssignSubjects(assignStudentSel.value); };
+      as.addEventListener('input', trigger);
+      as.addEventListener('keydown', (e)=> { if (e.key === 'Escape') { as.value=''; as.dispatchEvent(new Event('input')); } });
+    }
+    if (ac){ ac.onclick = () => { const as = $('assignSearch'); if (as){ as.value=''; as.dispatchEvent(new Event('input')); } }; }
+  }
+
+  function renderSubjects() {
+    const list = $('subjectsList'); list.innerHTML = "";
+    const filtered = getFilteredSubjects();
+    if (!filtered.length) { list.append(el('div', {class:'muted'}, 'No subjects match your search.')); return; }
+    for (const s of filtered) {
+      const row = el('div', {class:'pill'},
+        el('div',{}, s.name),
+        el('div',{}, ...(state.isAdmin ? [el('button', {class:'btn btn-sm ghost','data-id': s.id}, 'Delete')] : []))
+      );
+      if (state.isAdmin) {
+        row.querySelector('button').onclick = async () => {
+          if (!confirm('Delete this subject (and its areas/skills)?')) return;
+          await adminDelSubject(s.id);
+          await loadCatalog(); renderSubjects(); renderAreasAndSkills(); refreshAllStudentScopedUI(); renderScanSelectors();
+        };
+      }
+      list.append(row);
+    }
+  }
+
+  function getSelections() { return { subjectId: $('subjectSel').value || null, areaId: $('areaSel').value || null }; }
+  const subjectSel = $('subjectSel'), areaSel = $('areaSel'), skillsList = $('skillsList');
+  function renderAreasAndSkills() {
+    const prev = getSelections();
+    const subjects = getFilteredSubjects();
+    subjectSel.innerHTML = subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    if (subjects.length) {
+      if (prev.subjectId && subjects.find(s=>s.id===prev.subjectId)) subjectSel.value = prev.subjectId;
+      subjectSel.dispatchEvent(new Event('change'));
+      if (prev.areaId) {
+        const opt2 = [...areaSel.options].find(o=>o.value===prev.areaId);
+        if (opt2) areaSel.value = prev.areaId;
+        areaSel.dispatchEvent(new Event('change'));
+      }
+    } else { areaSel.innerHTML=""; skillsList.innerHTML=""; }
+  }
+  subjectSel.onchange = () => {
+    const sid = subjectSel.value;
+    const areas = state.areasBySubject[sid] || [];
+    areaSel.innerHTML = areas.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+    areaSel.dispatchEvent(new Event('change'));
+  };
+  areaSel.onchange = () => {
+    const aid = areaSel.value;
+    const skills = state.skillsByArea[aid] || [];
+    renderSkillList(skills);
+  };
+  function renderSkillList(skills) {
+    skillsList.innerHTML = "";
+    if (!skills.length) return skillsList.append(el('div', {class:'muted'}, 'No skills yet.'));
+    for (const sk of skills) {
+      const row = el('div', {class:'pill'},
+        el('div',{}, (sk.order!=null?`#${sk.order} · `:"")+sk.name),
+        el('div',{}, ...(state.isAdmin ? [el('button', {class:'btn btn-sm ghost','data-id': sk.id}, 'Delete')] : []))
+      );
+      if (state.isAdmin) {
+        row.querySelector('button').onclick = async () => {
+          if (!confirm('Delete this skill?')) return;
+          await adminDelSkill(subjectSel.value, areaSel.value, sk.id);
+          await loadCatalog(); renderAreasAndSkills(); renderScanSelectors();
+        };
+      }
+      skillsList.append(row);
+    }
+  }
+  $('addSubjectBtn').onclick = async () => {
+    if (!state.isAdmin) return;
+    const name = $('subjectName').value.trim(); if (!name) return;
+    const docRef = await adminAddSubject(name);
+    $('subjectName').value='';
+    await loadCatalog(); renderSubjects(); renderAreasAndSkills(); refreshAllStudentScopedUI(); renderScanSelectors();
+    if (docRef?.id) { subjectSel.value = docRef.id; subjectSel.dispatchEvent(new Event('change')); }
+  };
+  $('addAreaBtn').onclick = async () => {
+    if (!state.isAdmin) return;
+    const sid = subjectSel.value; const name = $('areaName').value.trim(); if (!sid || !name) return;
+    const aRef = await adminAddArea(sid, name);
+    $('areaName').value='';
+    await loadCatalog(); renderAreasAndSkills(); renderScanSelectors();
+    subjectSel.value = sid; subjectSel.dispatchEvent(new Event('change'));
+    if (aRef?.id) { areaSel.value = aRef.id; areaSel.dispatchEvent(new Event('change')); }
+  };
+  $('addSkillBtn').onclick = async () => {
+    if (!state.isAdmin) return;
+    const sid = subjectSel.value, aid = areaSel.value, name = $('skillName').value.trim();
+    if (!sid || !aid || !name) return;
+    const order = (state.skillsByArea[aid]?.length || 0) + 1;
+    await adminAddSkill(sid, aid, name, order);
+    $('skillName').value=''; await loadCatalog(); renderAreasAndSkills(); renderScanSelectors();
+    subjectSel.value = sid; subjectSel.dispatchEvent(new Event('change')); areaSel.value = aid; areaSel.dispatchEvent(new Event('change'));
+  };
+
+  /* ==================== Assign ==================== */
+  const assignStudentSel = $('assignStudentSel');
+  function renderAssign() {
+    const arr = filteredStudents();
+    assignStudentSel.innerHTML = arr.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    assignStudentSel.dispatchEvent(new Event('change'));
+  }
+  $('refreshAssignBtn').onclick = async () => { await loadEnrolments(assignStudentSel.value); renderAssignSubjects(assignStudentSel.value); };
+  assignStudentSel.onchange = async () => { await loadEnrolments(assignStudentSel.value); renderAssignSubjects(assignStudentSel.value); };
+
+  async function loadEnrolments(studentId) {
+    if (!studentId) return;
+    const snap = await getDocs(col('users', state.uid, 'students', studentId, 'subjects'));
+    const enrols = new Set(snap.docs.map(d=>d.id));
+    state.enrolmentsByStudent[studentId] = enrols;
+  }
+  function renderAssignSubjects(studentId) {
+    const box = $('assignSubjects'); box.innerHTML="";
+    const q = (($('assignSearch')?.value)||'').trim().toLowerCase();
+    const source = !q ? state.subjects : state.subjects.filter(s => (s.name||'').toLowerCase().includes(q));
+    if (!source.length) { box.append(el('div', {class:'muted'}, 'No subjects match your search.')); return; }
+    const enrols = state.enrolmentsByStudent[studentId] || new Set();
+    for (const subj of source) {
+      const row = document.createElement('label'); row.className='pill';
+      const name = document.createElement('div'); name.textContent=subj.name;
+      const cb = document.createElement('input'); cb.type='checkbox'; cb.className='checkbox'; cb.setAttribute('data-id', subj.id);
+      cb.checked = enrols.has(subj.id);
+      row.appendChild(name); row.appendChild(cb); box.appendChild(row);
+    }
+  }
+  $('saveAssignBtn').onclick = async () => {
+    const studentId = assignStudentSel.value; if (!studentId) return;
+    const checks = Array.from(document.querySelectorAll('#assignSubjects input[type="checkbox"]'));
+    const selected = checks.filter(c=>c.checked).map(c=>c.getAttribute('data-id'));
+    const existing = state.enrolmentsByStudent[studentId] || new Set();
+    for (const sid of Array.from(existing)) { if (!selected.includes(sid)) await deleteDoc(ref('users', state.uid, 'students', studentId, 'subjects', sid)); }
+    for (const sid of selected) { await setDoc(ref('users', state.uid, 'students', studentId, 'subjects', sid), { enrolled: true, updatedAt: serverTimestamp() }); }
+    await loadEnrolments(studentId); renderAssignSubjects(studentId);
+  };
+
+  /* ==================== Marking ==================== */
+  const mStudentSel = $('mStudentSel'), mSubjectSel = $('mSubjectSel'), mAreaSel = $('mAreaSel');
+  function renderMarkingSelectors() {
+    const arr = filteredStudents();
+    mStudentSel.innerHTML = arr.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    mStudentSel.dispatchEvent(new Event('change'));
+  }
+  mStudentSel.onchange = async () => {
+    const sid = mStudentSel.value;
+    await loadEnrolments(sid);
+    const enrols = state.enrolmentsByStudent[sid] || new Set();
+    const subjects = state.subjects.filter(s=> enrols.has(s.id));
+    mSubjectSel.innerHTML = subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    mSubjectSel.dispatchEvent(new Event('change'));
+  };
+  mSubjectSel.onchange = () => {
+    const subjId = mSubjectSel.value;
+    const areas = state.areasBySubject[subjId] || [];
+    mAreaSel.innerHTML = areas.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+    mAreaSel.dispatchEvent(new Event('change'));
+  };
+  mAreaSel.onchange = async () => { await renderMarkingTable(); };
+
+  async function renderMarkingTable() {
+    const studentId = mStudentSel.value; const subjectId = mSubjectSel.value; const areaId = mAreaSel.value;
+    const tbody = document.querySelector('#markingTable tbody'); tbody.innerHTML = "";
+    const skills = state.skillsByArea[areaId] || [];
+    if (!skills.length) return tbody.append(el('tr',{}, el('td',{colspan:'2'}, 'No skills for this area.')));
+    for (const sk of skills) {
+      const pRef = ref('users', state.uid, 'progress', studentId, 'subjects', subjectId, 'skills', sk.id);
+      const snap = await getDoc(pRef);
+      const completed = !!(snap.exists() && snap.data().completed);
+      const tr = el('tr',{},
+        el('td',{}, sk.name),
+        el('td',{}, (()=>{ const cb = el('input', {type:'checkbox', class:'checkbox'}); cb.checked = completed; cb.onchange = async () => {
+          await setDoc(pRef, { completed: cb.checked, updatedAt: serverTimestamp() }, { merge: true });
+          if ($('vStudentSel').value===studentId && $('vSubjectSel').value===subjectId && $('vAreaSel').value===areaId) { await renderViewTable(); }
+        }; return cb; })())
+      );
+      tbody.append(tr);
+    }
+  }
+
+  /* ==================== View Progress ==================== */
+  const vStudentSel = $('vStudentSel'), vSubjectSel = $('vSubjectSel'), vAreaSel = $('vAreaSel');
+  function renderViewSelectors() {
+    const arr = filteredStudents();
+    vStudentSel.innerHTML = arr.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    vStudentSel.dispatchEvent(new Event('change'));
+  }
+  vStudentSel.onchange = async () => {
+    const sid = vStudentSel.value;
+    await loadEnrolments(sid);
+    const enrols = state.enrolmentsByStudent[sid] || new Set();
+    const subjects = state.subjects.filter(s=> enrols.has(s.id));
+    vSubjectSel.innerHTML = subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    vSubjectSel.dispatchEvent(new Event('change'));
+  };
+  vSubjectSel.onchange = () => {
+    const subjId = vSubjectSel.value;
+    const areas = state.areasBySubject[subjId] || [];
+    vAreaSel.innerHTML = areas.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+    vAreaSel.dispatchEvent(new Event('change'));
+  };
+  vAreaSel.onchange = async () => { await renderViewTable(); };
+
+  async function renderViewTable() {
+    const studentId = vStudentSel.value; const subjectId = vSubjectSel.value; const areaId = vAreaSel.value;
+    const tbody = document.querySelector('#viewTable tbody');
+    const bar = $('kpiBar'), pct = $('kpiPct'), meta = $('kpiMeta');
+    tbody.innerHTML = "";
+    const skills = state.skillsByArea[areaId] || [];
+    if (!skills.length) {
+      tbody.append(el('tr',{}, el('td',{colspan:'2'}, 'No skills for this area.')));
+      bar.style.width = '0%'; pct.textContent = '0%'; meta.textContent = '0 of 0 skills completed'; return;
+    }
+    let done = 0;
+    for (const sk of skills) {
+      const pRef = ref('users', state.uid, 'progress', studentId, 'subjects', subjectId, 'skills', sk.id);
+      const snap = await getDoc(pRef);
+      const completed = !!(snap.exists() && snap.data().completed);
+      if (completed) done++;
+      const tr = el('tr',{}, el('td',{}, sk.name), el('td',{}, completed ? '✓ Completed' : '—'));
+      tbody.append(tr);
+    }
+    const total = skills.length;
+    const pctNum = Math.round((done/total)*100);
+    bar.style.width = pctNum + '%'; pct.textContent = pctNum + '%'; meta.textContent = `${done} of ${total} skills completed`;
+  }
+
+  /* ==================== All Subjects Progress ==================== */
+  const apStudentSel = $('apStudentSel');
+  function renderAllProgressSelectors() {
+    const arr = filteredStudents();
+    apStudentSel.innerHTML = arr.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    apStudentSel.onchange = renderAllProgressTable;
+    $('apRefreshBtn').onclick = renderAllProgressTable;
+    renderAllProgressTable();
+  }
+
+  async function renderAllProgressTable() {
+    const studentId = apStudentSel.value;
+    const tbody = document.querySelector('#apTable tbody'); tbody.innerHTML='';
+    if (!studentId) return;
+    await loadEnrolments(studentId);
+    const enrols = state.enrolmentsByStudent[studentId] || new Set();
+    const subs = state.subjects.filter(s=>enrols.has(s.id));
+    if (!subs.length) { tbody.append(el('tr',{}, el('td',{colspan:'3'}, 'Student is not enrolled in any subjects.'))); return; }
+    for (const subj of subs) {
+      const areas = state.areasBySubject[subj.id] || [];
+      let total = 0, done = 0;
+      for (const a of areas) {
+        const skills = state.skillsByArea[a.id] || [];
+        for (const sk of skills) {
+          total++;
+          const pRef = ref('users', state.uid, 'progress', studentId, 'subjects', subj.id, 'skills', sk.id);
+          const snap = await getDoc(pRef);
+          if (snap.exists() && snap.data().completed) done++;
+        }
+      }
+      const pct = total ? Math.round((done/total)*100) : 0;
+      const tr = el('tr',{},
+        el('td',{}, subj.name),
+        el('td',{}, `${done} / ${total}`),
+        el('td',{}, (()=>{ const wrap = el('div',{class:'progressbar'}); const fill = el('div',{class:'barFill'}); fill.style.width=pct+'%'; wrap.append(fill); return wrap; })())
+      );
+      tbody.append(tr);
+    }
+  }
+
+  /* ==================== Scan module (Quick Scan, auto-subjects) ==================== */
+  const $scan = {
+    studentSel: $('scanStudentSel'),
+    stillWrap: $('stillWrap'),
+    still: $('scanStill'),
+    overlay: $('scanOverlay'),
+    bar: $('scanBar'),
+    note: $('scanMatchesNote'),
+    results: $('scanResults'),
+    quickBtn: $('quickScanBtn'),
+    pickBtn: $('pickFromLibraryBtn'),
+    retakeBtn: $('retakeBtn'),
+    cameraInput: $('cameraInput'),
+    libraryInput: $('libraryInput'),
+    canvas: $('scanCanvas'),
+    canvasClean: $('scanCanvasClean'),
+  };
+  const scanCtx = $scan.canvas.getContext('2d');
+  const cleanCtx = $scan.canvasClean.getContext('2d');
+
+  function renderScanSelectors(){
+    const arr = filteredStudents();
+    $scan.studentSel.innerHTML = ['<option value="">Select student</option>']
+      .concat(arr.map(s=>`<option value="${s.id}">${s.name}</option>`)).join('');
+  }
+
+  $scan.quickBtn.addEventListener('click', ()=>{
+    if (!$scan.studentSel.value){ alert('Choose a student first.'); return; }
+    prewarmOCR(); $scan.cameraInput.click();
+  });
+  $scan.pickBtn.addEventListener('click', ()=>{
+    if (!$scan.studentSel.value){ alert('Choose a student first.'); return; }
+    prewarmOCR(); $scan.libraryInput.click();
+  });
+
+  $scan.cameraInput.addEventListener('change', async ()=> {
+    if ($scan.cameraInput.files?.length){ await handlePhotoFile($scan.cameraInput.files[0]); }
+  });
+  $scan.libraryInput.addEventListener('change', async ()=> {
+    if ($scan.libraryInput.files?.length){ await handlePhotoFile($scan.libraryInput.files[0]); }
+  });
+  $scan.retakeBtn.addEventListener('click', ()=>{
+    $scan.still.removeAttribute('src');
+    $scan.stillWrap.classList.add('hidden');
+    $scan.results.innerHTML = '';
+    $scan.note.style.display='none';
+    $scan.bar.style.width='0%';
+    $scan.retakeBtn.disabled = true;
+  });
+
+  function normalize(s){
+    return (s||'')
+      .toLowerCase()
+      .replace(/[•·●◦▪▫•]/g,' ')
+      .replace(/[“”‘’]/g,'"')
+      .replace(/[^a-z0-9 ]+/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+  function linesFrom(text){
+    return (text||'').split(/\r?\n/).map(normalize).filter(Boolean);
+  }
+  function matchedOutcome(textNorm, linesNorm, outcomeText){
+    const phrase = normalize(outcomeText);
+    if (!phrase) return false;
+    if (textNorm.includes(phrase)) return true;
+    const tokens = phrase.split(' ');
+    const uniq = Array.from(new Set(tokens));
+    const mustHave = [tokens[0], tokens[tokens.length-1]];
+    const coverageNeeded = Math.min(1, Math.max(0.9, (tokens.length-1)/tokens.length));
+    const windows = [];
+    for (let i=0;i<linesNorm.length;i++){
+      windows.push(linesNorm[i]);
+      if (i+1<linesNorm.length) windows.push(linesNorm[i]+' '+linesNorm[i+1]);
+    }
+    for (const w of windows){
+      const present = uniq.filter(t=> w.includes(t)).length;
+      const endsOK = mustHave.every(t=> w.includes(t));
+      if (endsOK && present/uniq.length >= coverageNeeded) return true;
+    }
+    return false;
+  }
+
+  async function prewarmOCR(){
+    if (window.Tesseract) return;
+    await new Promise((res, rej)=>{
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@6/dist/tesseract.min.js';
+      s.defer = true; s.onload = res; s.onerror = ()=>rej(new Error('Failed to load OCR library'));
+      document.body.appendChild(s);
+    });
+  }
+
+  function drawPhotoToCanvas(file){
+    return new Promise((resolve,reject)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        // Preview
+        const url = URL.createObjectURL(file);
+        $scan.still.src = url;
+        $scan.stillWrap.classList.remove('hidden');
+        $scan.retakeBtn.disabled = false;
+
+        // Canvas up to 1600px longest side
+        const w=img.width,h=img.height;
+        const scale = Math.min(1, 1600/Math.max(w,h));
+        const cw = Math.round(w*scale), ch = Math.round(h*scale);
+        $scan.canvas.width = cw; $scan.canvas.height = ch;
+        scanCtx.clearRect(0,0,cw,ch);
+        scanCtx.drawImage(img,0,0,cw,ch);
+        resolve($scan.canvas);
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  function buildCleanPass(){
+    const src = scanCtx.getImageData(0,0,$scan.canvas.width,$scan.canvas.height);
+    const dst = cleanCtx.createImageData(src.width, src.height);
+    const data = src.data, out = dst.data;
+    for (let i=0;i<data.length;i+=4){
+      const r=data[i], g=data[i+1], b=data[i+2];
+      let y = 0.2126*r + 0.7152*g + 0.0722*b;
+      y = (y-128)*1.25 + 128; y = Math.max(0, Math.min(255, y));
+      const t = 160; const v = y > t ? 255 : 0;
+      out[i]=out[i+1]=out[i+2]=v; out[i+3]=255;
+    }
+    $scan.canvasClean.width = src.width; $scan.canvasClean.height = src.height;
+    cleanCtx.putImageData(dst,0,0);
+  }
+
+  async function recognizeAll(){
+    await prewarmOCR();
+    const update = (m)=>{ if (m?.progress!=null) $scan.bar.style.width = Math.round(m.progress*100)+'%'; };
+    buildCleanPass();
+    const img1 = $scan.canvasClean.toDataURL('image/png');
+    const opt = { logger: update, tessedit_pageseg_mode: 6 };
+    const res1 = await Tesseract.recognize(img1, 'eng', opt);
+    let text = res1?.data?.text || '';
+    const img2 = $scan.canvas.toDataURL('image/jpeg', 0.92);
+    const res2 = await Tesseract.recognize(img2, 'eng', { logger: update, tessedit_pageseg_mode: 3 });
+    text += '\n' + (res2?.data?.text || '');
+    return text;
+  }
+
+  async function handlePhotoFile(file){
+    try{
+      $scan.results.innerHTML=''; $scan.note.style.display='none'; $scan.bar.style.width='0%';
+      await drawPhotoToCanvas(file);
+
+      // Sweep animation while scanning
+      $scan.overlay.classList.add('active');
+      const text = await recognizeAll();
+      const textNorm = normalize(text);
+      const linesNorm = linesFrom(text);
+
+      const items = [];
+      for (const oc of state.outcomeIndex){
+        if (matchedOutcome(textNorm, linesNorm, oc.text)){
+          items.push(oc);
+        }
+      }
+      renderScanMatches(items);
+    }catch(err){
+      console.error(err);
+      alert('Scan failed. Try another photo where the outcomes text is clear and horizontal.');
+    }finally{
+      $scan.overlay.classList.remove('active');
+    }
+  }
+
+  function escapeHtml(s){ return (s||'').replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
+
+  async function isEnrolled(studentId, subjectId){
+    if (!state.enrolmentsByStudent[studentId]) await loadEnrolments(studentId);
+    return (state.enrolmentsByStudent[studentId] || new Set()).has(subjectId);
+  }
+  async function enrol(studentId, subjectId){
+    await setDoc(ref('users', state.uid, 'students', studentId, 'subjects', subjectId), { enrolled:true, updatedAt: serverTimestamp() }, { merge:true });
+    await loadEnrolments(studentId);
+  }
+  async function markOutcome({studentId, subjectId, outcomeId, checked}){
+    const pRef = ref('users', state.uid, 'progress', studentId, 'subjects', subjectId, 'skills', outcomeId);
+    await setDoc(pRef, { completed: checked, updatedAt: serverTimestamp() }, { merge: true });
+  }
+
+  function renderScanMatches(items){
+    const results = $('scanResults'); results.innerHTML='';
+    const note = $('scanMatchesNote');
+
+    if (!items.length){
+      note.textContent = 'No learning outcomes detected for your catalog.';
+      note.style.display='block';
+      return;
+    }
+
+    const bySubject = {};
+    for (const it of items){ ((bySubject[it.subjectId] ||= {name: it.subjectName, areas:{}}).areas[it.areaId] ||= {name: it.areaName, list:[]}).list.push(it); }
+
+    const studentId = $('scanStudentSel').value;
+    const subjIds = Object.keys(bySubject);
+    note.textContent = `${items.length} outcome(s) detected across ${subjIds.length} subject(s).`;
+    note.style.display='block';
+
+    for (const subjectId of subjIds){
+      const group = bySubject[subjectId];
+      const wrap = el('section', {class:'scan-group'});
+      const header = el('header', {}, el('h3', {}, group.name), el('div', {}, el('span', {class:'badge'}, el('span',{class:'dot'}), 'detected')));
+      wrap.append(header);
+
+      (async () => {
+        const enrolled = await isEnrolled(studentId, subjectId);
+        if (!enrolled){
+          const btn = el('button', {class:'btn btn-sm ghost', style:'margin-left:auto'}, 'Enrol');
+          btn.onclick = async ()=>{
+            btn.disabled = true;
+            await enrol(studentId, subjectId);
+            btn.remove();
+            wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.disabled = false);
+          };
+          header.append(btn);
+        }
+      })();
+
+      for (const [areaId, aobj] of Object.entries(group.areas)){
+        const table = el('table', {class:'scan-table'});
+        table.innerHTML = `<thead><tr><th style="width:42px">mark</th><th>learning outcome</th><th style="width:140px">area</th></tr></thead><tbody></tbody>`;
+        const tb = table.querySelector('tbody');
+
+        for (const oc of aobj.list){
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><input type="checkbox" /></td>
+            <td>${escapeHtml(oc.text||'')}</td>
+            <td class="muted">${escapeHtml(aobj.name||'—')}</td>
+          `;
+          const cb = tr.querySelector('input[type="checkbox"]');
+          cb.disabled = true;
+
+          (async ()=>{
+            const enrolled = await isEnrolled(studentId, subjectId);
+            if (enrolled) cb.disabled = false;
+            const pRef = ref('users', state.uid, 'progress', studentId, 'subjects', subjectId, 'skills', oc.skillId);
+            const snap = await getDoc(pRef);
+            if (snap.exists() && snap.data().completed) cb.checked = true;
+
+            cb.addEventListener('change', async ()=>{
+              cb.disabled = true;
+              try{
+                await markOutcome({ studentId, subjectId, outcomeId: oc.skillId, checked: cb.checked });
+                if ($('mStudentSel').value===studentId && $('mSubjectSel').value===subjectId){ await renderMarkingTable(); }
+                if ($('vStudentSel').value===studentId && $('vSubjectSel').value===subjectId){ await renderViewTable(); }
+              }finally{
+                cb.disabled = false;
+              }
+            });
+          })();
+
+          tb.appendChild(tr);
+        }
+        wrap.append(table);
+      }
+
+      results.appendChild(wrap);
+    }
+  }
+
+  /* ==================== Data Export ==================== */
+  // ✅ NEW: Main function to gather all necessary data for export
+  async function gatherExportData(classId = null) {
+    const studentsToExport = classId && classId !== 'ALL'
+      ? state.students.filter(s => s.classId === classId)
+      : state.students;
+    
+    const classesToExport = classId && classId !== 'ALL'
+      ? state.classes.filter(c => c.id === classId)
+      : state.classes;
+
+    const progressData = {};
+    for (const student of studentsToExport) {
+      progressData[student.id] = {};
+      await loadEnrolments(student.id);
+      const enrolledSubjectIds = Array.from(state.enrolmentsByStudent[student.id] || []);
+
+      for (const subjectId of enrolledSubjectIds) {
+        const skillsSnap = await getDocs(col('users', state.uid, 'progress', student.id, 'subjects', subjectId, 'skills'));
+        if (!skillsSnap.empty) {
+          progressData[student.id][subjectId] = {};
+          skillsSnap.forEach(skillDoc => {
+            const skillData = skillDoc.data();
+            progressData[student.id][subjectId][skillDoc.id] = {
+              completed: skillData.completed,
+              updatedAt: skillData.updatedAt?.toDate()?.toISOString() || null
+            };
+          });
+        }
+      }
+    }
+
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      dataType: classId && classId !== 'ALL' ? 'class' : 'all',
+      classId: classId && classId !== 'ALL' ? classId : null,
+      data: {
+        classes: classesToExport,
+        students: studentsToExport,
+        progress: progressData
+      }
+    };
+  }
+
+  // ✅ NEW: Helper function to trigger a file download in the browser
+  function triggerJsonDownload(data, filename) {
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  
+  // ✅ NEW: Event listeners for the new export buttons
+  $('exportAllBtn').onclick = async (e) => {
+    e.target.textContent = 'Exporting...';
+    try {
+      const data = await gatherExportData();
+      const date = new Date().toISOString().split('T')[0];
+      triggerJsonDownload(data, `trackme_export_all_${date}.json`);
+    } catch (err) {
+      console.error("Export failed:", err);
+      alert("An error occurred during export. Check the console for details.");
+    } finally {
+      e.target.textContent = 'Export All Data (JSON)';
+    }
+  };
+
+  $('exportClassBtn').onclick = async (e) => {
+    const classId = state.currentClassId;
+    if (!classId || classId === 'ALL') {
+      alert("Please select a specific class from the header menu to export.");
+      return;
+    }
+    e.target.textContent = 'Exporting...';
+    try {
+      const data = await gatherExportData(classId);
+      const className = state.classes.find(c => c.id === classId)?.name.replace(/\s+/g, '_') || 'class';
+      const date = new Date().toISOString().split('T')[0];
+      triggerJsonDownload(data, `trackme_export_${className}_${date}.json`);
+    } catch (err) {
+      console.error("Export failed:", err);
+      alert("An error occurred during export. Check the console for details.");
+    } finally {
+      e.target.textContent = 'Export Current Class (JSON)';
+    }
+  };
+
+  $('importBtn').onclick = () => alert('Import catalog JSON (admin) — scaffold.');
+</script>
+</body>
+</html>
