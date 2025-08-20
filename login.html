@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>trackME — Sign in</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{ --bg:#fff; --surface:#fff; --ink:#0b0b0b; --muted:#6b7280; --line:#e5e7eb; --accent:#111; --accent-2:#000; --highlight:#ffd54a; --radius:14px; --shadow:0 10px 34px rgba(0,0,0,.08); }
+    *{box-sizing:border-box} html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    .page{min-height:100svh;display:grid;place-items:center;padding:clamp(16px,3vw,28px)}
+    .card{width:min(440px,92vw);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:clamp(18px,3vw,26px)}
+    .brand{display:grid;justify-items:center;gap:10px;margin-bottom:8px}
+    .logo{width:48px;height:48px}
+    h1{margin:0;font-size:clamp(22px,2.4vw,26px);letter-spacing:.2px}
+    .sub{color:var(--muted);font-size:12px}
+    .field{display:grid;gap:6px} label{font-size:13px;color:var(--muted);font-weight:600}
+    input{border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:#fff;color:var(--ink);outline:none;transition:box-shadow .18s ease, border-color .18s ease}
+    input:hover{background:#fafafa} input:focus{box-shadow:0 0 0 3px rgba(255,213,74,.45);border-color:var(--accent)}
+    .actions{display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-top:8px}
+    .btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;transition:transform .14s ease, background-color .18s ease, border-color .18s ease}
+    .btn:hover{background:#f7f7f7} .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff} .btn.primary:hover{background:var(--accent-2);transform:translateY(-1px)}
+    .btn.link{border:none;background:transparent;color:var(--accent);padding:8px 6px} .btn.link:hover{background:#f6f6f6;border-radius:8px}
+    .grid{display:grid;gap:12px;margin-top:12px} .note{color:var(--muted);font-size:13px;margin-top:4px;min-height:18px}
+    dialog{border:none;border-radius:14px;padding:0;max-width:min(420px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.15);animation:pop .2s ease-out}
+    dialog::backdrop{background:rgba(0,0,0,.15);backdrop-filter:blur(2px)}
+    @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+    .modal{padding:18px;border:1px solid var(--line);border-radius:14px;background:#fff} .modal h2{margin:0 0 8px 0;font-size:18px} .modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+    .divider{height:1px;background:var(--line);margin:10px 0}
+    @media (max-width:380px){ .btn{padding:9px 12px} input{padding:10px 11px} }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="card">
+      <div class="brand">
+        <svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="trackME logo" style="width:48px;height:48px">
+          <style>
+            .box,.check{fill:none;stroke:#111;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:100;stroke-dashoffset:100}
+            .box{animation:boxDraw .7s ease-out forwards}
+            .check{animation:checkDraw .65s .4s ease-out forwards}
+            .dot{fill:#ffd54a;transform-box:fill-box;transform-origin:center;opacity:0;animation:dotPop .36s .8s cubic-bezier(.2,.9,.2,1.3) forwards, dotPulse 2.2s 1.2s ease-in-out infinite}
+            @keyframes boxDraw{to{stroke-dashoffset:0}} @keyframes checkDraw{to{stroke-dashoffset:0}}
+            @keyframes dotPop{0%{opacity:0;transform:scale(.4)}60%{opacity:1;transform:scale(1.15)}100%{opacity:1;transform:scale(1)}}
+            @keyframes dotPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+            @media (prefers-reduced-motion: reduce){ .box,.check{animation:none;stroke-dashoffset:0} .dot{animation:none;opacity:1;transform:none} }
+          </style>
+          <rect class="box" x="6" y="6" width="52" height="52" rx="12" pathLength="100"/>
+          <path class="check" d="M20 34 l8 8 l16 -20" pathLength="100"/>
+          <circle class="dot" cx="50" cy="14" r="5"/>
+        </svg>
+        <h1>trackME</h1>
+        <div class="sub">copyright simon dass</div>
+      </div>
+
+      <form id="loginForm" class="grid" novalidate>
+        <div class="field">
+          <label for="email">email</label>
+          <input id="email" type="email" autocomplete="username email" placeholder="name@example.com" required>
+        </div>
+        <div class="field">
+          <label for="pass">password</label>
+          <input id="pass" type="password" autocomplete="current-password" placeholder="••••••••" required>
+        </div>
+        <div class="actions">
+          <div style="display:flex;gap:8px;align-items:center">
+            <button type="button" class="btn link" id="openReset">Forgot password?</button>
+            <button type="submit" class="btn primary" id="loginBtn">Sign in</button>
+          </div>
+        </div>
+        <div id="msg" class="note" aria-live="polite"></div>
+      </form>
+    </section>
+  </main>
+
+  <dialog id="resetDialog">
+    <div class="modal">
+      <h2>Reset password</h2>
+      <div class="grid">
+        <div class="field"><label for="rEmail">email</label><input id="rEmail" type="email" placeholder="name@example.com" autocomplete="email"></div>
+        <div id="rMsg" class="note" aria-live="polite"></div>
+      </div>
+      <div class="divider"></div>
+      <div class="row"><button class="btn" id="rCancel" type="button">Cancel</button><button class="btn primary" id="rSubmit" type="button">Send reset link</button></div>
+    </div>
+  </dialog>
+
+  <script type="module">
+    const firebaseConfig = {
+        apiKey: "AIzaSyDyVOcyN6GG4Eyk2bglXzZlpRAqE5h_J_8",
+    authDomain: "tracker-project-3f3f5.firebaseapp.com",
+    projectId: "tracker-project-3f3f5",
+appId: "1:997940286285:web:2e73d6113b74426acf5d04"
+  };
+
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    const $ = (id) => document.getElementById(id);
+    const say = (el, t) => { el.textContent = t; if (t) setTimeout(()=> el.textContent='', 5000); };
+
+    onAuthStateChanged(auth, (user) => { if (user) window.location.href = 'app.html'; });
+
+    $('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = $('email').value.trim(); const pass = $('pass').value;
+      try { await signInWithEmailAndPassword(auth, email, pass); }
+      catch (err) { say($('msg'), cleanErr(err)); }
+    });
+
+    const resetDlg = $('resetDialog');
+    $('openReset').onclick  = () => { prefillEmail('rEmail'); resetDlg.showModal(); };
+    $('rCancel').onclick = () => resetDlg.close();
+
+    $('rSubmit').onclick = async () => {
+      const email = $('rEmail').value.trim();
+      if (!email) return say($('rMsg'), 'Enter your email first.');
+      try { await sendPasswordResetEmail(auth, email); say($('rMsg'), 'Reset link sent (if the account exists).'); resetDlg.close(); }
+      catch (err) { say($('rMsg'), cleanErr(err)); }
+    };
+
+    $('pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('loginBtn').click(); });
+    function prefillEmail(targetId){ const val = $('email').value.trim(); if (val) $(targetId).value = val; }
+    function cleanErr(e){ const msg = (e && e.message) ? e.message : String(e); return msg.replace('Firebase:', '').replace(/\(auth\/.*?\)\.?/,'').trim(); }
+  </script>
+</body>
+</html>
