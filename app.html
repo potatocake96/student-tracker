@@ -48,6 +48,12 @@
     .btn,select,input[type="text"],input[type="email"],input[type="password"]{
       border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font:inherit;outline:none;transition:box-shadow .18s ease, transform .14s ease, background-color .18s ease, border-color .18s ease
     }
+    /* ADDED: larger checkboxes and accent color */
+    input[type="checkbox"]{
+      width: 18px;
+      height: 18px;
+      accent-color: var(--highlight);
+    }
     .btn{cursor:pointer}
     .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
     .btn.primary:hover{background:var(--accent-2);transform:translateY(-1px)}
@@ -465,7 +471,16 @@
       <button data-view="student" class="active">Student View</button>
       <button data-view="summary" class="mobile-hidden-view">Class Summary</button>
       <button data-view="subject" class="mobile-hidden-view">Subject Breakdown</button>
+      <!-- ADDED: Student Subjects view -->
+      <button data-view="studentAll" class="mobile-hidden-view">Student Subjects</button>
     </nav>
+    <!-- ADDED: Mobile dropdown for progress sub-views -->
+    <select id="progressViewSelect" class="nav-select control-sm" aria-label="Select progress view">
+      <option value="student">Student View</option>
+      <option value="summary">Class Summary</option>
+      <option value="subject">Subject Breakdown</option>
+      <option value="studentAll">Student Subjects</option>
+    </select>
 
     <div id="progress-view-student">
       <div class="toolbar cols-3">
@@ -502,6 +517,14 @@
     </div>
 
     <div id="progress-view-summary" class="hidden">
+      <div class="toolbar cols-1" style="margin-bottom:12px;">
+        <select id="pSummarySortSel" class="control-sm">
+          <option value="progressAsc">Progress low→high</option>
+          <option value="progressDesc">Progress high→low</option>
+          <option value="nameAsc">Name A→Z</option>
+          <option value="nameDesc">Name Z→A</option>
+        </select>
+      </div>
       <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;">
         <div class="card">
           <h3>All Students, All Subjects</h3>
@@ -531,8 +554,14 @@
     </div>
 
     <div id="progress-view-subject" class="hidden">
-      <div class="toolbar" style="margin-bottom: 12px;">
+      <div class="toolbar cols-2" style="margin-bottom: 12px;">
         <select id="pSubjectBreakdownSel" class="control-sm"></select>
+        <select id="pSubjectSortSel" class="control-sm">
+          <option value="progressAsc">Progress low→high</option>
+          <option value="progressDesc">Progress high→low</option>
+          <option value="nameAsc">Name A→Z</option>
+          <option value="nameDesc">Name Z→A</option>
+        </select>
       </div>
       <div class="card">
         <h3 id="pSubjectBreakdownTitle">Subject Breakdown</h3>
@@ -544,11 +573,41 @@
         </div>
       </div>
     </div>
+    <!-- ADDED: Student Subjects view -->
+    <div id="progress-view-studentAll" class="hidden">
+      <div class="toolbar cols-2" style="margin-bottom:12px;">
+        <select id="pStudentAllStudentSel" class="control-sm"></select>
+        <select id="pStudentAllSortSel" class="control-sm">
+          <option value="progressAsc">Progress low→high</option>
+          <option value="progressDesc">Progress high→low</option>
+          <option value="nameAsc">Subject A→Z</option>
+          <option value="nameDesc">Subject Z→A</option>
+        </select>
+      </div>
+      <div class="card">
+        <h3 id="pStudentAllTitle">Student Subjects</h3>
+        <div class="table-wrap">
+          <table id="pStudentAllTable">
+            <thead><tr><th>Subject</th><th>Completed</th><th style="width:160px">Progress</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section id="tab-graphics" class="tab card hidden">
     <h2>Class Graphics</h2>
     <p class="muted" style="margin-top:-8px; margin-bottom:12px;">Visual overview of the current class's progress.</p>
+    <!-- ADDED: Metrics toggles -->
+    <div class="card" style="margin-bottom:16px;">
+      <h3>Metrics Preferences</h3>
+      <div class="row" style="display:flex;flex-direction:column;gap:8px;">
+        <label><input type="checkbox" id="toggleDonut" checked> Class Average Donut</label>
+        <label><input type="checkbox" id="toggleBar" checked> Subject Performance Bars</label>
+        <label><input type="checkbox" id="toggleLeaderboard" checked> Student Leaderboard</label>
+      </div>
+    </div>
     <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
         <div>
             <h3>Class Average Completion</h3>
@@ -562,6 +621,13 @@
                 <canvas id="subjectBarChart"></canvas>
             </div>
         </div>
+    </div>
+    <!-- ADDED: Student Leaderboard Chart -->
+    <div id="leaderboardChartContainer" style="margin-top:16px;">
+      <h3>Student Leaderboard</h3>
+      <div class="chart-container" style="max-width:none;">
+        <canvas id="studentLeaderboardChart"></canvas>
+      </div>
     </div>
   </section>
 
@@ -662,7 +728,7 @@
     enrolmentsByStudent: {},
     outcomeIndex: [], // {subjectId,subjectName,areaId,areaName,skillId,textNorm,text}
     progress: { currentView: 'student' },
-    charts: { donut: null, bar: null }
+    charts: { donut: null, bar: null, leaderboard: null }
   };
 
   onAuthStateChanged(auth, async (user) => {
@@ -1048,16 +1114,47 @@
       btn.addEventListener('click', () => {
         state.progress.currentView = btn.dataset.view;
         showProgressView(state.progress.currentView);
+        // Sync mobile progress view dropdown when nav buttons clicked
+        const pvSel = $('progressViewSelect');
+        if (pvSel) pvSel.value = state.progress.currentView;
       });
     });
     renderStudentProgressSelectors();
     renderSubjectBreakdownSelector();
+    // Initialize Student Subjects selectors
+    renderStudentAllSelectors();
+    // Setup mobile progress view selector
+    const pvSel = $('progressViewSelect');
+    if (pvSel) {
+      pvSel.value = state.progress.currentView;
+      pvSel.onchange = () => {
+        state.progress.currentView = pvSel.value;
+        showProgressView(state.progress.currentView);
+      };
+    }
+    // Attach sort handler for class summary
+    const summarySortSel = $('pSummarySortSel');
+    if (summarySortSel) {
+      summarySortSel.onchange = () => {
+        if (state.progress.currentView === 'summary') renderClassSummaryView();
+      };
+    }
+    // Attach sort handler for subject breakdown
+    const subjSortSel = $('pSubjectSortSel');
+    if (subjSortSel) {
+      subjSortSel.onchange = () => {
+        if (state.progress.currentView === 'subject') renderSubjectBreakdownView();
+      };
+    }
     showProgressView(state.progress.currentView);
   }
 
   function showProgressView(viewName) {
     document.querySelectorAll('#progressNav button').forEach(b => b.classList.toggle('active', b.dataset.view === viewName));
-    ['student', 'summary', 'subject'].forEach(v => {
+    // Also sync the mobile progress view select
+    const pvSel = $('progressViewSelect');
+    if (pvSel && pvSel.value !== viewName) pvSel.value = viewName;
+    ['student', 'summary', 'subject', 'studentAll'].forEach(v => {
       const el = $(`progress-view-${v}`);
       if (el) el.classList.toggle('hidden', v !== viewName);
     });
@@ -1072,6 +1169,7 @@
       case 'student': renderStudentProgressView(); break;
       case 'summary': renderClassSummaryView(); break;
       case 'subject': renderSubjectBreakdownView(); break;
+      case 'studentAll': renderStudentAllProgressView(); break;
     }
   }
   
@@ -1153,19 +1251,33 @@
     
     tbody.innerHTML = '';
     let totalPctSum = 0;
-    allProgressData.forEach((data, i) => {
-        const student = students[i];
-        const pct = data.total > 0 ? Math.round((data.done / data.total) * 100) : 0;
+    // Combine student info with their progress
+    const combined = students.map((s,i) => ({ student: s, progress: allProgressData[i] }));
+    // Sort based on user preference
+    const sortSel = $('pSummarySortSel')?.value || 'nameAsc';
+    combined.sort((a,b) => {
+      const pctA = a.progress.total ? a.progress.done / a.progress.total : 0;
+      const pctB = b.progress.total ? b.progress.done / b.progress.total : 0;
+      switch(sortSel){
+        case 'progressAsc': return pctA - pctB;
+        case 'progressDesc': return pctB - pctA;
+        case 'nameAsc': return a.student.name.localeCompare(b.student.name);
+        case 'nameDesc': return b.student.name.localeCompare(a.student.name);
+        default: return 0;
+      }
+    });
+    combined.forEach(item => {
+        const { student, progress } = item;
+        const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
         totalPctSum += pct;
-        const tr = el('tr',{},
-          el('td',{}, student.name),
-          el('td',{}, `${data.done} / ${data.total}`),
-          el('td',{}, (()=>{ const wrap=el('div',{class:'progressbar'}); const fill=el('div',{class:'barFill'}); fill.style.width=pct+'%'; wrap.append(fill); return wrap; })())
+        const tr = el('tr', {},
+          el('td', {}, escapeHtml(student.name)),
+          el('td', {}, `${progress.done} / ${progress.total}`),
+          el('td', {}, (()=>{ const wrap=el('div',{class:'progressbar'}); const fill=el('div',{class:'barFill'}); fill.style.width=pct+'%'; wrap.append(fill); return wrap; })())
         );
         tbody.append(tr);
     });
-    
-    const classAvgPct = students.length > 0 ? Math.round(totalPctSum / students.length) : 0;
+    const classAvgPct = combined.length > 0 ? Math.round(totalPctSum / combined.length) : 0;
     $('pSummaryKpiBar').style.width = classAvgPct + '%';
     $('pSummaryKpiPct').textContent = classAvgPct + '%';
   }
@@ -1209,7 +1321,7 @@
   }
   
   async function renderSubjectBreakdownView() {
-    await renderSubjectBreakdownSelector(); // Refresh the list first
+    // Note: do not refresh selector here; we preserve the current selection
     const subjectId = $('pSubjectBreakdownSel').value;
     const subject = state.subjects.find(s => s.id === subjectId);
     
@@ -1233,21 +1345,40 @@
     const allProgressData = await Promise.all(students.map(s => getStudentSubjectProgress(s.id, subjectId)));
     
     tbody.innerHTML = '';
-    let studentsInSubject = 0;
-    allProgressData.forEach((data, i) => {
-        const student = students[i];
-        if (!data.enrolled) return;
-        studentsInSubject++;
+    const combined = [];
+    for (let i = 0; i < allProgressData.length; i++) {
+      const data = allProgressData[i];
+      const student = students[i];
+      if (!data.enrolled) continue;
+      combined.push({ student, progress: data });
+    }
+    // Apply sorting
+    const sortSel = $('pSubjectSortSel')?.value || 'nameAsc';
+    combined.sort((a,b) => {
+      const pctA = a.progress.total ? a.progress.done / a.progress.total : 0;
+      const pctB = b.progress.total ? b.progress.done / b.progress.total : 0;
+      switch(sortSel){
+        case 'progressAsc': return pctA - pctB;
+        case 'progressDesc': return pctB - pctA;
+        case 'nameAsc': return a.student.name.localeCompare(b.student.name);
+        case 'nameDesc': return b.student.name.localeCompare(a.student.name);
+        default: return 0;
+      }
+    });
+    if (combined.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="3" class="muted">No students in this class are enrolled in this subject.</td></tr>`;
+    } else {
+      combined.forEach(item => {
+        const student = item.student;
+        const data = item.progress;
         const pct = data.total > 0 ? Math.round((data.done / data.total) * 100) : 0;
         const tr = el('tr',{},
-          el('td',{}, student.name),
+          el('td',{}, escapeHtml(student.name)),
           el('td',{}, `${data.done} / ${data.total}`),
           el('td',{}, (()=>{ const wrap=el('div',{class:'progressbar'}); const fill=el('div',{class:'barFill'}); fill.style.width=pct+'%'; wrap.append(fill); return wrap; })())
         );
         tbody.append(tr);
-    });
-    if (studentsInSubject === 0) {
-        tbody.innerHTML = `<tr><td colspan="3" class="muted">No students in this class are enrolled in this subject.</td></tr>`;
+      });
     }
   }
   
@@ -1269,16 +1400,101 @@
     return { enrolled: true, done, total };
   }
 
+  /* ============ New View 4: Student Subjects ============ */
+  function renderStudentAllSelectors() {
+    const selStudent = $('pStudentAllStudentSel');
+    const selSort = $('pStudentAllSortSel');
+    if (!selStudent || !selSort) return;
+    const arr = filteredStudents();
+    selStudent.innerHTML = arr.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    selStudent.onchange = renderStudentAllProgressView;
+    selSort.onchange = renderStudentAllProgressView;
+  }
+
+  async function renderStudentAllProgressView() {
+    const tbody = $('pStudentAllTable')?.querySelector('tbody');
+    if (!tbody) return;
+    const studentId = $('pStudentAllStudentSel')?.value;
+    const sortVal = $('pStudentAllSortSel')?.value || 'nameAsc';
+    if (!studentId) {
+      tbody.innerHTML = `<tr><td colspan="3" class="muted">Select a student to view their subjects.</td></tr>`;
+      return;
+    }
+    await loadEnrolments(studentId);
+    const enrols = state.enrolmentsByStudent[studentId] || new Set();
+    const subjects = state.subjects.filter(s => enrols.has(s.id));
+    if (subjects.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="3" class="muted">This student is not enrolled in any subjects.</td></tr>`;
+      return;
+    }
+    const data = await Promise.all(subjects.map(async subj => {
+      let done = 0, total = 0;
+      const areas = state.areasBySubject[subj.id] || [];
+      for (const area of areas) {
+        const skills = state.skillsByArea[area.id] || [];
+        total += skills.length;
+        const progSnap = await getDocs(col('users', state.uid, 'progress', studentId, 'subjects', subj.id, 'skills'));
+        const completed = new Set(progSnap.docs.filter(d => d.data().completed).map(d => d.id));
+        skills.forEach(sk => { if (completed.has(sk.id)) done++; });
+      }
+      return { subject: subj, done, total };
+    }));
+    data.sort((a,b) => {
+      const pctA = a.total ? a.done / a.total : 0;
+      const pctB = b.total ? b.done / b.total : 0;
+      switch(sortVal) {
+        case 'progressAsc': return pctA - pctB;
+        case 'progressDesc': return pctB - pctA;
+        case 'nameAsc': return a.subject.name.localeCompare(b.subject.name);
+        case 'nameDesc': return b.subject.name.localeCompare(a.subject.name);
+        default: return 0;
+      }
+    });
+    tbody.innerHTML = '';
+    data.forEach(item => {
+      const pct = item.total ? Math.round((item.done / item.total) * 100) : 0;
+      const tr = el('tr', {},
+        el('td', {}, escapeHtml(item.subject.name)),
+        el('td', {}, `${item.done} / ${item.total}`),
+        el('td', {}, (() => { const wrap = el('div', { class:'progressbar' }); const fill = el('div', { class:'barFill' }); fill.style.width = pct + '%'; wrap.append(fill); return wrap; })())
+      );
+      tbody.appendChild(tr);
+    });
+  }
+
   /* ==================== Graphics Tab ==================== */
   async function renderGraphicsTab() {
-      if (state.charts.donut) state.charts.donut.destroy();
-      if (state.charts.bar) state.charts.bar.destroy();
+      // Destroy existing charts
+      if (state.charts.donut) { state.charts.donut.destroy(); state.charts.donut = null; }
+      if (state.charts.bar) { state.charts.bar.destroy(); state.charts.bar = null; }
+      if (state.charts.leaderboard) { state.charts.leaderboard.destroy(); state.charts.leaderboard = null; }
 
       const students = filteredStudents();
       if (students.length === 0) {
           // Handle no students view
           return;
       }
+
+      // Load preferences from localStorage
+      let prefs = {};
+      try { prefs = JSON.parse(localStorage.getItem('metricsPrefs') || '{}'); } catch(e) { prefs = {}; }
+      prefs.showDonut = prefs.showDonut !== false;
+      prefs.showBar = prefs.showBar !== false;
+      prefs.showLeaderboard = prefs.showLeaderboard || false;
+      // Update checkbox states
+      const toggleDonut = $('toggleDonut');
+      const toggleBar = $('toggleBar');
+      const toggleLeaderboard = $('toggleLeaderboard');
+      if (toggleDonut) toggleDonut.checked = prefs.showDonut;
+      if (toggleBar) toggleBar.checked = prefs.showBar;
+      if (toggleLeaderboard) toggleLeaderboard.checked = prefs.showLeaderboard;
+      // Toggle container visibility
+      const donutContainer = $('classDonutChart')?.closest('div.chart-container')?.parentElement;
+      const barContainer = $('subjectBarChart')?.closest('div.chart-container')?.parentElement;
+      const leaderContainer = $('leaderboardChartContainer');
+      if (donutContainer) donutContainer.parentElement.style.display = prefs.showDonut ? '' : 'none';
+      if (barContainer) barContainer.parentElement.style.display = prefs.showBar ? '' : 'none';
+      if (leaderContainer) leaderContainer.style.display = prefs.showLeaderboard ? '' : 'none';
 
       // 1. Donut Chart Data
       const allProgressData = await Promise.all(students.map(s => getStudentOverallProgress(s.id)));
@@ -1287,27 +1503,27 @@
           totalPctSum += data.total > 0 ? (data.done / data.total) * 100 : 0;
       });
       const classAvgPct = students.length > 0 ? Math.round(totalPctSum / students.length) : 0;
-
-      state.charts.donut = new Chart($('classDonutChart'), {
-          type: 'doughnut',
-          data: {
-              labels: ['Completed', 'Remaining'],
-              datasets: [{
-                  data: [classAvgPct, 100 - classAvgPct],
-                  backgroundColor: ['#ffd54a', '#e5e7eb'],
-                  borderWidth: 0,
-              }]
-          },
-          options: { responsive: true, maintainAspectRatio: true, cutout: '70%' }
-      });
-
+      // Create Donut chart if enabled
+      if (prefs.showDonut) {
+        state.charts.donut = new Chart($('classDonutChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Completed', 'Remaining'],
+                datasets: [{
+                    data: [classAvgPct, 100 - classAvgPct],
+                    backgroundColor: ['#ffd54a', '#e5e7eb'],
+                    borderWidth: 0,
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: true, cutout: '70%' }
+        });
+      }
       // 2. Bar Chart Data
       const relevantSubjectIds = new Set();
       students.forEach(s => {
           (state.enrolmentsByStudent[s.id] || new Set()).forEach(sid => relevantSubjectIds.add(sid));
       });
       const relevantSubjects = state.subjects.filter(s => relevantSubjectIds.has(s.id));
-      
       const subjectAverages = await Promise.all(relevantSubjects.map(async (subj) => {
           const studentProgresses = await Promise.all(students.map(s => getStudentSubjectProgress(s.id, subj.id)));
           const enrolledStudentsProgress = studentProgresses.filter(p => p.enrolled);
@@ -1317,26 +1533,70 @@
           }, 0);
           return Math.round(totalSubjPct / enrolledStudentsProgress.length);
       }));
-      
-      state.charts.bar = new Chart($('subjectBarChart'), {
+      // Create Bar chart if enabled
+      if (prefs.showBar) {
+        state.charts.bar = new Chart($('subjectBarChart'), {
+            type: 'bar',
+            data: {
+                labels: relevantSubjects.map(s => s.name),
+                datasets: [{
+                    label: 'Average Class Completion',
+                    data: subjectAverages,
+                    backgroundColor: '#111111',
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { x: { beginAtZero: true, max: 100 } },
+                plugins: { legend: { display: false } }
+            }
+        });
+      }
+      // 3. Leaderboard Chart Data (top 10 students by overall progress)
+      if (prefs.showLeaderboard) {
+        const studentProgress = allProgressData.map((data,i) => {
+          const pct = data.total > 0 ? (data.done / data.total) * 100 : 0;
+          return { name: students[i].name, pct: Math.round(pct) };
+        }).sort((a,b) => b.pct - a.pct).slice(0, 10);
+        state.charts.leaderboard = new Chart($('studentLeaderboardChart'), {
           type: 'bar',
           data: {
-              labels: relevantSubjects.map(s => s.name),
-              datasets: [{
-                  label: 'Average Class Completion',
-                  data: subjectAverages,
-                  backgroundColor: '#111111',
-                  borderRadius: 4,
-              }]
+            labels: studentProgress.map(sp => sp.name),
+            datasets: [{
+              label: 'Completion %',
+              data: studentProgress.map(sp => sp.pct),
+              backgroundColor: '#111111',
+              borderRadius: 4,
+            }]
           },
           options: {
-              indexAxis: 'y',
-              responsive: true,
-              maintainAspectRatio: false,
-              scales: { x: { beginAtZero: true, max: 100 } },
-              plugins: { legend: { display: false } }
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { x: { beginAtZero: true, max: 100 } },
+            plugins: { legend: { display: false } }
           }
-      });
+        });
+      }
+      // Set up toggle change handlers
+      if (toggleDonut) toggleDonut.onchange = () => {
+        prefs.showDonut = toggleDonut.checked;
+        localStorage.setItem('metricsPrefs', JSON.stringify(prefs));
+        renderGraphicsTab();
+      };
+      if (toggleBar) toggleBar.onchange = () => {
+        prefs.showBar = toggleBar.checked;
+        localStorage.setItem('metricsPrefs', JSON.stringify(prefs));
+        renderGraphicsTab();
+      };
+      if (toggleLeaderboard) toggleLeaderboard.onchange = () => {
+        prefs.showLeaderboard = toggleLeaderboard.checked;
+        localStorage.setItem('metricsPrefs', JSON.stringify(prefs));
+        renderGraphicsTab();
+      };
   }
 
   /* ==================== Scan module (Quick Scan, auto-subjects) ==================== */
