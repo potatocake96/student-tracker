@@ -1786,76 +1786,92 @@
   }
 
   function renderScanMatches(items){
-    const results = $('scanResults'); results.innerHTML='';
-    const note = $('scanMatchesNote');
+  const results = $('scanResults'); results.innerHTML='';
+  const note = $('scanMatchesNote');
+  const studentId = $('scanStudentSel').value || null;
 
-    if (!items.length){
-      note.textContent = 'No learning outcomes detected for your catalog.';
-      note.style.display='block';
-      return;
+  // Guard: nothing scanned
+  if (!items || !items.length){
+    note.textContent = 'No learning outcomes detected for your catalog.';
+    note.style.display='block';
+    return;
+  }
+
+  // Filter to enrolled subjects
+  let filtered = items;
+  if (studentId){
+    const enrols = state.enrolmentsByStudent[studentId] || new Set();
+    filtered = items.filter(it => enrols.has(it.subjectId));
+  }
+
+  if (!filtered.length){
+    note.textContent = 'Outcomes detected, but none matched subjects this student is enrolled in.';
+    note.style.display='block';
+    return;
+  }
+
+  // Fetch existing completion for each outcome so checkboxes reflect prior work
+  const progressMap = new Map(); // key `${subjectId}|${skillId}` -> boolean
+  const fetches = filtered.map(it => {
+    const pRef = ref('users', state.uid, 'progress', studentId, 'subjects', it.subjectId, 'skills', it.skillId);
+    return getDoc(pRef).then(snap => {
+      const key = it.subjectId + '|' + it.skillId;
+      progressMap.set(key, snap.exists() && !!snap.data().completed);
+    }).catch(()=>{
+      const key = it.subjectId + '|' + it.skillId;
+      progressMap.set(key, false);
+    });
+  });
+
+  Promise.all(fetches).then(()=>{
+    // Build subject → area → list structure
+    const bySubject = {};
+    for (const it of filtered){
+      if (!bySubject[it.subjectId]) bySubject[it.subjectId] = { name: it.subjectName, areas: {} };
+      if (!bySubject[it.subjectId].areas[it.areaId]) bySubject[it.subjectId].areas[it.areaId] = { name: it.areaName, list: [] };
+      bySubject[it.subjectId].areas[it.areaId].list.push(it);
     }
 
-    const bySubject = {};
-    for (const it of items){ ((bySubject[it.subjectId] ||= {name: it.subjectName, areas:{}}).areas[it.areaId] ||= {name: it.areaName, list:[]}).list.push(it); }
-
-    const studentId = $('scanStudentSel').value;
     const subjIds = Object.keys(bySubject);
-    note.textContent = `${items.length} outcome(s) detected across ${subjIds.length} subject(s).`;
+    const discarded = items.length - filtered.length;
+    note.textContent = `${filtered.length} outcome(s) matched across ${subjIds.length} enrolled subject(s)` + (discarded>0? ` • ${discarded} non-enrolled subject(s) hidden` : '');
     note.style.display='block';
 
     for (const subjectId of subjIds){
-      const group = bySubject[subjectId];
-      const wrap = el('section', {class:'scan-group'});
-      const header = el('header', {}, el('h3', {}, group.name), el('div', {}, el('span', {class:'badge'}, el('span',{class:'dot'}), 'detected')));
-      wrap.append(header);
-
-      (async () => {
-        const enrolled = await isEnrolled(studentId, subjectId);
-        if (!enrolled){
-          const btn = el('button', {class:'btn btn-sm ghost', style:'margin-left:auto'}, 'Enrol');
-          btn.onclick = async ()=>{
-            btn.disabled = true;
-            await enrol(studentId, subjectId);
-            btn.remove();
-            wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.disabled = false);
-          };
-          header.append(btn);
-        }
-      })();
-
-      for (const [areaId, aobj] of Object.entries(group.areas)){
+      const wrap = el('div', {class:'scan-group'});
+      wrap.append(el('header',{}, el('h3',{}, bySubject[subjectId].name)));
+      const areas = bySubject[subjectId].areas;
+      for (const areaId of Object.keys(areas)){
+        wrap.append(el('div', {class:'card', style:'margin:8px'}, el('h3',{}, areas[areaId].name)));
         const table = el('table', {class:'scan-table'});
-        table.innerHTML = `<thead><tr><th style="width:42px">mark</th><th>learning outcome</th><th style="width:140px">area</th></tr></thead><tbody></tbody>`;
-        const tb = table.querySelector('tbody');
+        table.appendChild(el('thead',{}, el('tr',{}, el('th',{}, 'Skill'), el('th', {style:'width:140px'}, 'Completed?'))));
+        const tb = el('tbody',{});
+        table.appendChild(tb);
 
-        for (const oc of aobj.list){
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td><input type="checkbox" /></td>
-            <td>${escapeHtml(oc.text||'')}</td>
-            <td class="muted">${escapeHtml(aobj.name||'—')}</td>
-          `;
-          const cb = tr.querySelector('input[type="checkbox"]');
-          cb.disabled = true;
+        for (const it of areas[areaId].list){
+          const tr = el('tr',{});
+          tr.appendChild(el('td',{}, it.text));
+          const td = el('td',{});
+          const cb = el('input', {type:'checkbox', class:'checkbox'});
+          // prefill from existing progress
+          const key = subjectId + '|' + it.skillId;
+          cb.checked = !!progressMap.get(key);
+          td.appendChild(cb); tr.appendChild(td);
 
-          (async ()=>{
-            const enrolled = await isEnrolled(studentId, subjectId);
-            if (enrolled) cb.disabled = false;
-            const pRef = ref('users', state.uid, 'progress', studentId, 'subjects', subjectId, 'skills', oc.skillId);
-            const snap = await getDoc(pRef);
-            if (snap.exists() && snap.data().completed) cb.checked = true;
-
+          (function(subjectId, areaId, outcomeId){
             cb.addEventListener('change', async ()=>{
               cb.disabled = true;
               try{
-                await markOutcome({ studentId, subjectId, outcomeId: oc.skillId, checked: cb.checked });
+                const pRef = ref('users', state.uid, 'progress', studentId, 'subjects', subjectId, 'skills', outcomeId);
+                await setDoc(pRef, { completed: cb.checked, updatedAt: serverTimestamp() }, { merge: true });
+                // sync other views
                 if ($('mStudentSel').value===studentId && $('mSubjectSel').value===subjectId){ await renderMarkingTable(); }
                 if (state.progress.currentView === 'student' && $('pStudentSel').value===studentId && $('pSubjectSel').value===subjectId){ await renderStudentProgressViewTable(); }
               }finally{
                 cb.disabled = false;
               }
             });
-          })();
+          })(subjectId, areaId, it.skillId);
 
           tb.appendChild(tr);
         }
@@ -1863,7 +1879,8 @@
       }
       results.appendChild(wrap);
     }
-  }
+  });
+}
 
   /* ==================== Data Export / Import ==================== */
   async function gatherExportData() {
