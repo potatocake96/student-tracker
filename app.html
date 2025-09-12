@@ -6,7 +6,10 @@
   <title>trackME</title>
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js">
+
+
+</script>
   <style>
     :root{
       --bg:#ffffff; --surface:#ffffff; --ink:#0a0a0a; --muted:#6b7280; --line:#e5e7eb;
@@ -602,7 +605,8 @@
     <!-- ADDED: Metrics toggles -->
     <div class="card" style="margin-bottom:16px;">
       <h3>Metrics Preferences</h3>
-      <div class="row" style="display:flex;flex-direction:column;gap:8px;">
+      <div class="row" style="display:flex;flex-direction:column;gap:8px;">        <label><input type="checkbox" id="toggleStackedBar" checked> Completed vs Incomplete (stacked)</label>
+
         <label><input type="checkbox" id="toggleDonut" checked> Class Average Donut</label>
         <label><input type="checkbox" id="toggleBar" checked> Subject Performance Bars</label>
         <label><input type="checkbox" id="toggleLeaderboard" checked> Student Leaderboard</label>
@@ -623,7 +627,15 @@
         </div>
     </div>
     <!-- ADDED: Student Leaderboard Chart -->
-    <div id="leaderboardChartContainer" style="margin-top:16px;">
+    
+    <div id="stackedBarContainer" style="margin-top:16px;">
+      <h3>Completed vs Incomplete (Ascending by %)</h3>
+      <div class="chart-container" style="height:420px;max-height:60vh;" style="height:420px;max-height:60vh;" style="max-width:none;">
+        <canvas id="completedStackedBar"></canvas>
+      </div>
+    </div>
+
+  <div id="leaderboardChartContainer" style="margin-top:16px;">
       <h3>Student Leaderboard</h3>
       <div class="chart-container" style="max-width:none;">
         <canvas id="studentLeaderboardChart"></canvas>
@@ -776,7 +788,7 @@
       state.currentClassId = state.classes[0].id;
     }
   }
-  function renderHeaderClass() {
+  async function renderHeaderClass() {
     const sel = $('classSel');
     const opts = ['<option value="ALL">All classes</option>'].concat(state.classes.map(c=>`<option value="${c.id}">${c.name}</option>`)).join('');
     sel.innerHTML = opts;
@@ -797,7 +809,7 @@
     await loadClasses();
     ensureClassSelection(); renderHeaderClass(); refreshAllStudentScopedUI(); renderClassesTab(); renderScanSelectors();
   }
-  function renderClassesTab() {
+  async function renderClassesTab() {
     const list = $('classesList'); list.innerHTML='';
     if (!state.classes.length) { list.append(el('div', {class:'muted'}, 'No classes yet. Create one above.')); return; }
     for (const c of state.classes) {
@@ -822,7 +834,7 @@
     const snap = await getDocs(col('users', state.uid, 'students'));
     state.students = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=> (a.name||'').localeCompare(b.name||''));
   }
-  function renderStudents() {
+  async function renderStudents() {
     const list = $('studentsList'); list.innerHTML = "";
     const arr = filteredStudents();
     if (!arr.length) list.append(el('div', {class:'muted'}, 'No students in this class.'));
@@ -922,7 +934,7 @@
     if (ac){ ac.onclick = () => { const as = $('assignSearch'); if (as){ as.value=''; as.dispatchEvent(new Event('input')); } }; }
   }
 
-  function renderSubjects() {
+  async function renderSubjects() {
     const list = $('subjectsList'); list.innerHTML = "";
     const filtered = getFilteredSubjects();
     if (!filtered.length) { list.append(el('div', {class:'muted'}, 'No subjects match your search.')); return; }
@@ -969,7 +981,7 @@
     const skills = state.skillsByArea[aid] || [];
     renderSkillList(skills);
   };
-  function renderSkillList(skills) {
+  async function renderSkillList(skills) {
     skillsList.innerHTML = "";
     if (!skills.length) return skillsList.append(el('div', {class:'muted'}, 'No skills yet.'));
     for (const sk of skills) {
@@ -1176,7 +1188,7 @@
   // View 1: Student Progress
   const pStudentSel = $('pStudentSel'), pSubjectSel = $('pSubjectSel'), pAreaSel = $('pAreaSel');
   
-  function renderStudentProgressSelectors() {
+  async function renderStudentProgressSelectors() {
     const arr = filteredStudents();
     pStudentSel.innerHTML = arr.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
     pStudentSel.onchange = async () => {
@@ -1463,7 +1475,121 @@
   }
 
   /* ==================== Graphics Tab ==================== */
-  async function renderGraphicsTab() {
+/* ==== NEW: Graphics helpers for heatmap & stacked bar ==== */
+
+
+
+
+function destroyChart(chartRefName) {
+  const ch = state.charts[chartRefName];
+  if (ch && ch.destroy) {
+    ch.destroy();
+    state.charts[chartRefName] = null;
+  }
+}
+
+
+
+
+
+
+  
+
+async function renderStackedCompletionChart() {
+  const container = document.getElementById('stackedBarContainer');
+  if (!container) return;
+  const toggle = document.getElementById('toggleStackedBar');
+  container.style.display = (toggle && !toggle.checked) ? 'none' : 'block';
+  if (toggle && !toggle.checked) { destroyChart('stacked'); return; }
+
+  // Simple in-session cache by class id
+  state._stackedCache ||= {};
+  const classId = $('classSel')?.value || 'default';
+  if (state._stackedCache[classId]) {
+    drawStacked(state._stackedCache[classId]);
+    return;
+  }
+
+  const students = filteredStudents();
+  await Promise.all(students.map(s => loadEnrolments(s.id)));
+
+  // Compute totals quickly: sum skills from local state; fetch "done" counts per subject via one getDocs() each.
+  const rows = [];
+  for (const s of students) {
+    let total = 0, done = 0;
+    const enrols = state.enrolmentsByStudent[s.id] || new Set();
+    const subjIds = Array.from(enrols);
+
+    // Sum total skills locally
+    for (const subjId of subjIds) {
+      const areas = state.areasBySubject[subjId] || [];
+      for (const a of areas) total += (state.skillsByArea[a.id] || []).length;
+    }
+
+    // Count completed with one read per subject (list all skill docs and count completed)
+    for (const subjId of subjIds) {
+      const skillsCol = collection(ref('users', state.uid, 'progress', s.id, 'subjects', subjId), 'skills');
+      const snap = await getDocs(skillsCol);
+      snap.forEach(doc => { if (doc.data()?.completed) done++; });
+    }
+
+    const pct = total>0 ? (done/total) : 0;
+    rows.push({ name: s.name, done, incomplete: Math.max(0, total - done), total, pct });
+  }
+
+  // Sort ascending by %
+  rows.sort((a,b)=> a.pct - b.pct);
+
+  // Cache & draw
+  state._stackedCache[classId] = rows;
+  drawStacked(rows);
+}
+
+function drawStacked(rows){
+  const labels = rows.map(r=>r.name);
+  const doneData = rows.map(r=>r.done);
+  const incData = rows.map(r=>r.incomplete);
+
+  // No data fallback
+  if (!rows || rows.length === 0) {
+    console.warn('Stacked: no rows to render');
+    const msg2 = document.createElement('div');
+    msg2.className = 'muted';
+    msg2.style.margin = '8px';
+    msg2.textContent = 'No data to display for stacked chart.';
+    const c2 = document.getElementById('stackedBarContainer');
+    if (c2 && !c2.querySelector('.muted')) c2.appendChild(msg2);
+    destroyChart('stacked');
+    return;
+  }
+
+  const ctx = document.getElementById('completedStackedBar').getContext('2d');
+  destroyChart('stacked');
+  state.charts.stacked = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Completed', data: doneData, stack: 's', backgroundColor: '#ffd54a', borderWidth: 0 },
+        { label: 'Incomplete', data: incData, stack: 's', backgroundColor: '#e5e7eb', borderWidth: 0 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        tooltip: { mode: 'index', intersect: false },
+        legend: { position: 'bottom' }
+      },
+      scales: {
+        x: { stacked: true, ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
+        y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Outcomes' } }
+      }
+    }
+  });
+}
+
+async function renderGraphicsTab(){
       // Destroy existing charts
       if (state.charts.donut) { state.charts.donut.destroy(); state.charts.donut = null; }
       if (state.charts.bar) { state.charts.bar.destroy(); state.charts.bar = null; }
@@ -1597,7 +1723,24 @@
         localStorage.setItem('metricsPrefs', JSON.stringify(prefs));
         renderGraphicsTab();
       };
-  }
+  
+  renderStackedCompletionChart();
+
+  // NEW: wire toggles once
+  (function(){
+        const tStack = document.getElementById('toggleStackedBar');
+        if (tStack && !tStack._bound){ tStack.addEventListener('change', ()=> renderStackedCompletionChart()); tStack._bound = true; }
+    if (!window._graphicsResizeBound){
+      window.addEventListener('resize', ()=>{
+        if (document.querySelector('#mainNavTabs button.active')?.dataset.tab === 'graphics') {
+          
+          renderStackedCompletionChart();
+        }
+      }, { passive: true });
+      window._graphicsResizeBound = true;
+    }
+  })();
+}
 
   /* ==================== Scan module (Quick Scan, auto-subjects) ==================== */
   const $scan = {
@@ -1620,10 +1763,12 @@
   const cleanCtx = $scan.canvasClean.getContext('2d');
 
   function renderScanSelectors(){
-    const arr = filteredStudents();
-    $scan.studentSel.innerHTML = ['<option value="">Select student</option>']
-      .concat(arr.map(s=>`<option value="${s.id}">${s.name}</option>`)).join('');
-  }
+  const studentSel = $('scanStudentSel');
+  if (!studentSel) return;
+  const arr = filteredStudents();
+  studentSel.innerHTML = ['<option value="">Select student</option>']
+    .concat(arr.map(s=>`<option value="${s.id}">${s.name}</option>`)).join('');
+}
 
   $scan.quickBtn.addEventListener('click', ()=>{
     if (!$scan.studentSel.value){ alert('Choose a student first.'); return; }
@@ -1785,7 +1930,7 @@
     await setDoc(pRef, { completed: checked, updatedAt: serverTimestamp() }, { merge: true });
   }
 
-  function renderScanMatches(items){
+  async function renderScanMatches(items){
   const results = $('scanResults'); results.innerHTML='';
   const note = $('scanMatchesNote');
   const studentId = $('scanStudentSel').value || null;
